@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net6.0</TargetFramework>
+		<ImplicitUsings>disable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<PlatformTarget>x64</PlatformTarget>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Compile Include="../external/SDL2-CS/src/SDL2.cs" />
+		<Compile Include="../external/sokol-csharp/src/sokol/Gfx.cs" />
+		<Compile Include="../external/sokol-csharp/src/sokol/Audio.cs" />
+		<Compile Include="../external/sokol-csharp/src/sokol/Gl.cs" />
+		<Compile Include="../external/sokol-csharp/src/sokol/Time.cs" />
+		<Compile Include="../external/sokol-csharp/src/sokol/Shape.cs" />
+		<Compile Include="../external/sokol-csharp/src/sokol/Extras.cs" />
+		<Compile Include="../external/sokol-csharp/src/sokol/DebugText.cs" />
+	</ItemGroup>
+
+</Project>
