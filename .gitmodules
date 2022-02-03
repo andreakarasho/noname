@@ -1,0 +1,6 @@
+[submodule "external/SDL2-CS"]
+	path = external/SDL2-CS
+	url = https://github.com/flibitijibibo/SDL2-CS.git
+[submodule "external/sokol-csharp"]
+	path = external/sokol-csharp
+	url = https://github.com/andreakarasho/sokol-csharp.git
