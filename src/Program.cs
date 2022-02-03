@@ -32,29 +32,12 @@ namespace noname
             });
 
             /* a vertex buffer with 3 vertices */
-            ReadOnlySpan<float> vertices = stackalloc float[] {
+            ReadOnlySpan<float> vertices = stackalloc float[] 
+            {
                 // positions            // colors
-                0.0f,
-                0.5f,
-                0.5f,
-                1.0f,
-                0.0f,
-                0.0f,
-                1.0f,
-                0.5f,
-                -0.5f,
-                0.5f,
-                0.0f,
-                1.0f,
-                0.0f,
-                1.0f,
-                -0.5f,
-                -0.5f,
-                0.5f,
-                0.0f,
-                0.0f,
-                1.0f,
-                1.0f
+                 0.0f,  0.5f, 0.5f,     1.0f, 0.0f, 0.0f, 1.0f,
+                 0.5f, -0.5f, 0.5f,     0.0f, 1.0f, 0.0f, 1.0f,
+                -0.5f, -0.5f, 0.5f,     0.0f, 0.0f, 1.0f, 1.0f
             };
 
             State.Bindings.VertexBuffers[0] = Gfx.MakeBuffer(
