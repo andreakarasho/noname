@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 using Sokol;
 using SDL2;
-
+using System.Runtime.CompilerServices;
 
 namespace noname
 {
@@ -106,8 +106,8 @@ namespace noname
                 {
                     Device = (void*)_state.Device.Ptr,
                     DeviceContext = (void*)_state.Context,
-                    RenderTargetViewCb = (delegate* unmanaged<void*>)&GetRT,
-                    DepthStencilViewCb = (delegate* unmanaged<void*>)&GetDepthStencil
+                    RenderTargetViewCb = (delegate* unmanaged<void*>)&GetRenderTargetView,
+                    DepthStencilViewCb = (delegate* unmanaged<void*>)&GetDepthStencilView
                 }
             };
 
@@ -191,10 +191,10 @@ namespace noname
         }
 
         [UnmanagedCallersOnly]
-        private static void* GetRT() => _state.MainRenderTargetView.ToPointer();
+        private static void* GetRenderTargetView() => _state.MainRenderTargetView.ToPointer();
 
         [UnmanagedCallersOnly]
-        private static void* GetDepthStencil() => _state.MainDepthStencilView.ToPointer();
+        private static void* GetDepthStencilView() => _state.MainDepthStencilView.ToPointer();
 
         [UnmanagedCallersOnly]
         private static void Present() => _state.SwapChain.Present(_state.SwapChain.Ptr, 0, 0);
@@ -372,7 +372,8 @@ namespace noname
             private static IntPtr Allocate(string guid)
             {
                 IntPtr ret = Marshal.AllocHGlobal(16);
-                Marshal.StructureToPtr(new Guid(guid), ret, false);
+                Unsafe.WriteUnaligned(ret.ToPointer(), new Guid(guid));
+
                 return ret;
             }
         }
