@@ -4,5 +4,5 @@
 # How to build
 ## bflat
 ```
-bflat build Program.cs D3D11.cs Backend.cs ../external/SDL2-CS/src/SDL2.cs ../external/sokol-csharp/src/sokol/Gfx.cs ../external/sokol-csharp/src/sokol/Extras.cs
+bflat build Program.cs D3D11.cs Backend.cs ../external/SDL2-CS/src/SDL2.cs ../external/sokol-csharp/src/sokol/Gfx.cs ../external/sokol-csharp/src/sokol/Extras.cs --os:windows --no-reflection --no-globalization --no-exception-messages --Os
 ```
