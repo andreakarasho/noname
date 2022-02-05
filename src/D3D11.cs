@@ -6,47 +6,6 @@ using System.Runtime.CompilerServices;
 
 namespace noname
 {
-    [StructLayout(LayoutKind.Sequential)]
-    public unsafe struct BackendContext
-    {
-        public D3D11Context D3D11;
-        public MetalContext Metal;
-        public OpenGLContext OpenGL;
-        public WebGLContext WebGL;
-
-        public delegate* unmanaged<void> PresentCB;
-        public delegate* unmanaged<int, int, void> UpdateRenderTargetCB;
-        public delegate* unmanaged<void> ShutdownCB;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public unsafe struct D3D11Context
-    {
-        public IntPtr Device;
-        public IntPtr Context;
-        public IntPtr SwapChain;
-        public void* RenderTargetViewCB;
-        public void* DepthStencilViewCB;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public unsafe struct MetalContext
-    {
-
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public unsafe struct OpenGLContext
-    {
-        public IntPtr Context;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public unsafe struct WebGLContext
-    {
-
-    }
-
     static unsafe class D3D11
     {
         private static State _state;
