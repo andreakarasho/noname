@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using System.Threading;
 using SDL2;
 using Sokol;
 
@@ -11,6 +12,7 @@ namespace noname
         {
             Backend.Run(new Backend.BackendDescription()
             {
+                BackendType = Backend.BackendType.D3D11,
                 WindowTitle = "backend d3d11 test",
                 OnInit = &OnInit,
                 OnShutdown = &OnShutdown,
@@ -53,6 +55,13 @@ namespace noname
             pipelineDesc.Layout.Attrs[0].Format = Gfx.VertexFormat.Float3;
             pipelineDesc.Layout.Attrs[1].Format = Gfx.VertexFormat.Float4;
             State.Pipeline = Gfx.MakePipeline(pipelineDesc);
+
+
+
+            var dbgText = new DebugText.Desc();
+            ref var d = ref dbgText.Fonts[0];
+            d = DebugText.FontC64();
+            DebugText.Setup(dbgText);
         }
 
         [UnmanagedCallersOnly]
@@ -64,12 +73,24 @@ namespace noname
         [UnmanagedCallersOnly]
         private static void OnFrame(void* userdata)
         {
+            string text = "SOKOL + SDL TEST";
+            DebugText.Font(0);
+            DebugText.Canvas(Backend.Width, Backend.Height);
+            DebugText.Origin(0f, 0f);
+            DebugText.Pos((Backend.Width / 8f) * 0.5f, (Backend.Height / 8f) * 0.5f);
+            DebugText.Puts(text);
+
             Gfx.BeginDefaultPass(default, Backend.Width, Backend.Height);
             Gfx.ApplyPipeline(State.Pipeline);
             Gfx.ApplyBindings(State.Bindings);
             Gfx.Draw(0, 3, 1);
+
+            DebugText.Draw();
+
             Gfx.EndPass();
             Gfx.Commit();
+
+            Thread.Sleep(1);
         }
 
         [UnmanagedCallersOnly]

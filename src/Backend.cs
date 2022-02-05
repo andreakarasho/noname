@@ -4,6 +4,7 @@ using System;
 using Sokol;
 
 using static SDL2.SDL;
+using SDL2;
 
 namespace noname
 {
@@ -19,38 +20,21 @@ namespace noname
         public static void Run(in BackendDescription desc)
         {
             _desc = desc;
+
             // sanitize stuff
-            var windowTitle = !string.IsNullOrEmpty(_desc.WindowTitle) ? _desc.WindowTitle : WINDOW_DEFAULT_TITLE;
+            _desc.WindowTitle = !string.IsNullOrEmpty(_desc.WindowTitle) ? _desc.WindowTitle : WINDOW_DEFAULT_TITLE;
             _desc.WindowWidth = _desc.WindowWidth > 0 ? _desc.WindowWidth : WINDOW_DEFAULT_WIDTH;
             _desc.WindowHeight = _desc.WindowHeight > 0 ? _desc.WindowHeight : WINDOW_DEFAULT_HEIGHT;
 
-            if (_desc.BackendType == BackendType.Detect)
-            {
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                {
-                    _desc.BackendType = BackendType.D3D11;
-                }
-                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ||
-                         RuntimeInformation.IsOSPlatform(OSPlatform.FreeBSD))
-                {
-                    _desc.BackendType = BackendType.OpenGL;
-                }
-                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                {
-                    _desc.BackendType = BackendType.Metal;
-                }
-                else
-                {
-                    throw new PlatformNotSupportedException("OS is not supported");
-                }
-            }
-
+            
             SDL_SetMainReady();
             _ = SDL_Init(SDL_INIT_VIDEO);
 
+            PresetupBackend();
+
             var window = SDL_CreateWindow
             (
-                windowTitle,
+                _desc.WindowTitle,
                 _desc.WindowX > 0 ? _desc.WindowX : SDL_WINDOWPOS_CENTERED,
                 _desc.WindowY > 0 ? _desc.WindowY : SDL_WINDOWPOS_CENTERED,
                 _desc.WindowWidth,
@@ -108,6 +92,11 @@ namespace noname
             }
 
             SDL_DestroyWindow(window);
+
+            if (ctx.ShutdownCB != null)
+            {
+                ctx.ShutdownCB();
+            }    
         }
 
         public static int Width => _desc.WindowWidth > 0 ? _desc.WindowWidth : 1;
@@ -115,7 +104,55 @@ namespace noname
 
         public static Gfx.ContextDesc GetContext()
         {
-            return D3D11.GetContext();
+            switch (_desc.BackendType)
+            {
+                case BackendType.D3D11: return D3D11.GetContext();
+                case BackendType.OpenGL: return OpenGL.GetContext();
+            }
+
+            return default;
+        }
+
+        private static void PresetupBackend()
+        {
+            if (_desc.BackendType == BackendType.Detect)
+            {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    _desc.BackendType = BackendType.D3D11;
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ||
+                         RuntimeInformation.IsOSPlatform(OSPlatform.FreeBSD))
+                {
+                    _desc.BackendType = BackendType.OpenGL;
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                {
+                    _desc.BackendType = BackendType.Metal;
+                }
+                else
+                {
+                    throw new PlatformNotSupportedException("OS is not supported");
+                }
+            }
+
+            switch (_desc.BackendType)
+            {
+                case BackendType.D3D11:
+
+                    break;
+
+                case BackendType.OpenGL:
+                    SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_CONTEXT_PROFILE_MASK, SDL.SDL_GLprofile.SDL_GL_CONTEXT_PROFILE_CORE);
+                    SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_CONTEXT_FLAGS, 0);
+                    SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_DOUBLEBUFFER, 1);
+                    SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_DEPTH_SIZE, 24);
+                    SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_STENCIL_SIZE, 8);
+
+                    _desc.WindowSetupFlags |= SDL_WindowFlags.SDL_WINDOW_OPENGL;
+
+                    break;
+            }
         }
 
         private static BackendContext CreateContext(BackendType backend, IntPtr window)
@@ -132,6 +169,10 @@ namespace noname
                 {
                     ctx = D3D11.Setup(info.info.win.window, _desc.WindowWidth, _desc.WindowHeight);
                 }
+            }
+            else if (backend == BackendType.OpenGL)
+            {
+                ctx = OpenGL.Setup(window, _desc.WindowWidth, _desc.WindowHeight);
             }
 
             return ctx;

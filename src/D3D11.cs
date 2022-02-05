@@ -16,6 +16,7 @@ namespace noname
 
         public delegate* unmanaged<void> PresentCB;
         public delegate* unmanaged<int, int, void> UpdateRenderTargetCB;
+        public delegate* unmanaged<void> ShutdownCB;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -37,7 +38,7 @@ namespace noname
     [StructLayout(LayoutKind.Sequential)]
     public unsafe struct OpenGLContext
     {
-
+        public IntPtr Context;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -46,7 +47,7 @@ namespace noname
 
     }
 
-    unsafe static class D3D11
+    static unsafe class D3D11
     {
         private static State _state;
 
@@ -89,14 +90,12 @@ namespace noname
 
             ctx.PresentCB = &Present;
             ctx.UpdateRenderTargetCB = &UpdateDefaultRenderTarget;
+            ctx.ShutdownCB = &Shutdown;
 
             return ctx;
         }
 
-        public static void Shutdown()
-        {
-            DestroyDefaultRenderTarget();
-        }
+       
 
         public static Gfx.ContextDesc GetContext()
         {
@@ -112,6 +111,16 @@ namespace noname
             };
 
             return ctx;
+        }
+
+
+        [UnmanagedCallersOnly]
+        private static void Shutdown()
+        {
+            DestroyDefaultRenderTarget();
+            SafeDispose(_state.Context);
+            SafeDispose(_state.Device.Ptr);
+            SafeDispose(_state.SwapChain.Ptr);
         }
 
         [UnmanagedCallersOnly]
