@@ -77,7 +77,7 @@ namespace noname
 
                 if (_desc.OnFrame != null)
                 {
-                    _desc.OnFrame(_desc.Userdata);
+                    _desc.OnFrame(window.ToPointer());
                 }
 
                 if (ctx.PresentCB != null)

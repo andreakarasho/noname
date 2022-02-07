@@ -1,6 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
+using bottlenoselabs;
 using SDL2;
 using Sokol;
 
@@ -8,6 +12,8 @@ namespace noname
 {
     unsafe class Program
     {
+        private static ImGuiRenderer _imgui;
+
         static void Main(string[] args)
         {
             Backend.Run(new Backend.BackendDescription()
@@ -34,12 +40,30 @@ namespace noname
             });
 
             /* a vertex buffer with 3 vertices */
-            ReadOnlySpan<float> vertices = stackalloc float[] 
+            ReadOnlySpan<float> vertices = stackalloc float[]
             {
                 // positions            // colors
-                 0.0f,  0.5f, 0.5f,     1.0f, 0.0f, 0.0f, 1.0f,
-                 0.5f, -0.5f, 0.5f,     0.0f, 1.0f, 0.0f, 1.0f,
-                -0.5f, -0.5f, 0.5f,     0.0f, 0.0f, 1.0f, 1.0f
+                0.0f,
+                0.5f,
+                0.5f,
+                1.0f,
+                0.0f,
+                0.0f,
+                1.0f,
+                0.5f,
+                -0.5f,
+                0.5f,
+                0.0f,
+                1.0f,
+                0.0f,
+                1.0f,
+                -0.5f,
+                -0.5f,
+                0.5f,
+                0.0f,
+                0.0f,
+                1.0f,
+                1.0f
             };
 
             State.Bindings.VertexBuffers[0] = Gfx.MakeBuffer(
@@ -62,17 +86,45 @@ namespace noname
             ref var d = ref dbgText.Fonts[0];
             d = DebugText.FontC64();
             DebugText.Setup(dbgText);
+
+
+            _imgui = new ImGuiRenderer();
+            _imgui.Setup(new ImGuiRenderer.ImGuiDesc()
+            {
+                //MaxVertices = ushort.MaxValue + 1,
+                //IniFilename = String.Empty,
+                //SampleCount = 1,
+                //ColorFormat = Gfx.PixelFormat.Rgba8,
+                //DepthFormat = Gfx.PixelFormat.DepthStencil,
+            });
         }
 
         [UnmanagedCallersOnly]
         private static void OnShutdown(void* userdata)
         {
-
+            _imgui?.Shutdown();
         }
+
+        private static ImGui.Runtime.CString _buffer = (byte*)NativeMemory.AllocZeroed(16);
 
         [UnmanagedCallersOnly]
         private static void OnFrame(void* userdata)
         {
+            _imgui.NewFrame(new ImGuiRenderer.ImGuiFrameDesc()
+            {
+                Window = (IntPtr) userdata,
+                DpiScale = 1.0f,
+                Width = Backend.Width,
+                Height = Backend.Height,
+                DeltaTime = 1f / 60f,
+                GlobalMouseState = true
+            });
+
+            
+            ImGui.igInputText("label", _buffer, 16, 0, default, null);
+            ImGui.igShowDemoWindow(null);
+
+
             string text = "SOKOL + SDL TEST";
             DebugText.Font(0);
             DebugText.Canvas(Backend.Width, Backend.Height);
@@ -87,6 +139,8 @@ namespace noname
 
             DebugText.Draw();
 
+            _imgui.Render();
+
             Gfx.EndPass();
             Gfx.Commit();
 
@@ -96,7 +150,7 @@ namespace noname
         [UnmanagedCallersOnly]
         private static void OnEvent(SDL.SDL_Event* ev, void* userdata)
         {
-
+            _imgui?.HandleEvent(ev);
         }
 
         static Gfx.ShaderDesc GetShaderDesc()
