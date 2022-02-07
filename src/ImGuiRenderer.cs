@@ -269,7 +269,15 @@ namespace noname
                 case SDL.SDL_EventType.SDL_MOUSEBUTTONUP:
                     break;
                 case SDL.SDL_EventType.SDL_MOUSEWHEEL:
+
+                    float wheel_x = (ev->wheel.x > 0) ? 1.0f : (ev->wheel.x < 0) ? -1.0f : 0.0f;
+                    float wheel_y = (ev->wheel.y > 0) ? 1.0f : (ev->wheel.y < 0) ? -1.0f : 0.0f;
+
+                    io.MouseWheel = wheel_y;
+                    io.MouseWheelH = wheel_x;
+
                     break;
+
                 case SDL.SDL_EventType.SDL_MOUSEMOTION:    
                     break;
                 case SDL.SDL_EventType.SDL_KEYDOWN:
