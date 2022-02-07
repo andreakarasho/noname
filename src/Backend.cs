@@ -2,9 +2,10 @@
 using System.Runtime.InteropServices;
 using System;
 using Sokol;
+using SDL2;
 
 using static SDL2.SDL;
-using SDL2;
+
 
 namespace noname
 {
@@ -15,6 +16,11 @@ namespace noname
         const string WINDOW_DEFAULT_TITLE = "App";
 
         private static BackendDescription _desc;
+
+
+        public static IntPtr Window { get; private set; }
+        public static int Width => _desc.WindowWidth > 0 ? _desc.WindowWidth : 1;
+        public static int Height => _desc.WindowHeight > 0 ? _desc.WindowHeight : 1;
 
 
         public static void Run(in BackendDescription desc)
@@ -32,7 +38,7 @@ namespace noname
 
             PresetupBackend();
 
-            var window = SDL_CreateWindow
+            Window = SDL_CreateWindow
             (
                 _desc.WindowTitle,
                 _desc.WindowX > 0 ? _desc.WindowX : SDL_WINDOWPOS_CENTERED,
@@ -42,7 +48,7 @@ namespace noname
                 _desc.WindowSetupFlags
             );
 
-            var ctx = CreateContext(_desc.BackendType, window);
+            var ctx = CreateContext(_desc.BackendType, Window);
 
             if (_desc.OnInit != null)
             {
@@ -77,7 +83,7 @@ namespace noname
 
                 if (_desc.OnFrame != null)
                 {
-                    _desc.OnFrame(window.ToPointer());
+                    _desc.OnFrame(_desc.Userdata);
                 }
 
                 if (ctx.PresentCB != null)
@@ -91,17 +97,17 @@ namespace noname
                 _desc.OnShutdown(desc.Userdata);
             }
 
-            SDL_DestroyWindow(window);
+            SDL_DestroyWindow(Window);
 
             if (ctx.ShutdownCB != null)
             {
                 ctx.ShutdownCB();
-            }    
+            }
+
+            Window = IntPtr.Zero;
         }
 
-        public static int Width => _desc.WindowWidth > 0 ? _desc.WindowWidth : 1;
-        public static int Height => _desc.WindowHeight > 0 ? _desc.WindowHeight : 1;
-
+        
         public static Gfx.ContextDesc GetContext()
         {
             switch (_desc.BackendType)

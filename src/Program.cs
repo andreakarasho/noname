@@ -13,6 +13,7 @@ namespace noname
     unsafe class Program
     {
         private static ImGuiRenderer _imgui;
+        private static ImGui.Runtime.CString _buffer = (byte*)NativeMemory.AllocZeroed(16);
 
         static void Main(string[] args)
         {
@@ -103,16 +104,16 @@ namespace noname
         private static void OnShutdown(void* userdata)
         {
             _imgui?.Shutdown();
-        }
 
-        private static ImGui.Runtime.CString _buffer = (byte*)NativeMemory.AllocZeroed(16);
+            NativeMemory.Free((void*) _buffer._pointer);
+        }
 
         [UnmanagedCallersOnly]
         private static void OnFrame(void* userdata)
         {
             _imgui.NewFrame(new ImGuiRenderer.ImGuiFrameDesc()
             {
-                Window = (IntPtr) userdata,
+                Window = Backend.Window,
                 DpiScale = 1.0f,
                 Width = Backend.Width,
                 Height = Backend.Height,
