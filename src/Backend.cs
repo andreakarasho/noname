@@ -1,4 +1,8 @@
-﻿using System.Runtime.CompilerServices;
+﻿#if DEBUG || BFLAT
+#define SOKOL_D3D11
+#endif
+
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System;
 using Sokol;
@@ -48,7 +52,9 @@ namespace noname
                 _desc.WindowSetupFlags
             );
 
-            var ctx = CreateContext(_desc.BackendType, Window);
+            var ctx = CreateContext(Window);
+
+            SDL.SDL_SetHint(SDL.SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 
             if (_desc.OnInit != null)
             {
@@ -95,93 +101,86 @@ namespace noname
             if (_desc.OnShutdown != null)
             {
                 _desc.OnShutdown(desc.Userdata);
-            }
-
-            SDL_DestroyWindow(Window);
+            }      
 
             if (ctx.ShutdownCB != null)
             {
                 ctx.ShutdownCB();
             }
 
+            SDL_DestroyWindow(Window);
             Window = IntPtr.Zero;
         }
 
         
         public static Gfx.ContextDesc GetContext()
         {
-            switch (_desc.BackendType)
-            {
-                case BackendType.D3D11: return D3D11.GetContext();
-                case BackendType.OpenGL: return OpenGL.GetContext();
-            }
-
-            return default;
+#if SOKOL_D3D11
+            return D3D11.GetContext();
+#elif SOKOL_GLES2 || SOKOL_GLES3 || SOKOL_GLCORE33
+            return OpenGL.GetContext();
+#else
+            throw new NotImplementedException();
+#endif
         }
 
         private static void PresetupBackend()
         {
-            if (_desc.BackendType == BackendType.Detect)
-            {
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                {
-                    _desc.BackendType = BackendType.D3D11;
-                }
-                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ||
-                         RuntimeInformation.IsOSPlatform(OSPlatform.FreeBSD))
-                {
-                    _desc.BackendType = BackendType.OpenGL;
-                }
-                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                {
-                    _desc.BackendType = BackendType.Metal;
-                }
-                else
-                {
-                    throw new PlatformNotSupportedException("OS is not supported");
-                }
-            }
+#if SOKOL_D3D11
 
-            switch (_desc.BackendType)
-            {
-                case BackendType.D3D11:
+#elif SOKOL_GLES2
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_CONTEXT_PROFILE_MASK, SDL.SDL_GLprofile.SDL_GL_CONTEXT_PROFILE_ES);
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_CONTEXT_FLAGS, 0);
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_DOUBLEBUFFER, 1);
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_DEPTH_SIZE, 24);
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_STENCIL_SIZE, 8);
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_CONTEXT_MINOR_VERSION, 0);
 
-                    break;
+            _desc.WindowSetupFlags |= SDL_WindowFlags.SDL_WINDOW_OPENGL;
+#elif SOKOL_GLES3
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_CONTEXT_PROFILE_MASK, SDL.SDL_GLprofile.SDL_GL_CONTEXT_PROFILE_ES);
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_CONTEXT_FLAGS, 0);
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_DOUBLEBUFFER, 1);
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_DEPTH_SIZE, 24);
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_STENCIL_SIZE, 8);
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_CONTEXT_MINOR_VERSION, 0);
 
-                case BackendType.OpenGL:
-                    SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_CONTEXT_PROFILE_MASK, SDL.SDL_GLprofile.SDL_GL_CONTEXT_PROFILE_CORE);
-                    SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_CONTEXT_FLAGS, 0);
-                    SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_DOUBLEBUFFER, 1);
-                    SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_DEPTH_SIZE, 24);
-                    SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_STENCIL_SIZE, 8);
+            _desc.WindowSetupFlags |= SDL_WindowFlags.SDL_WINDOW_OPENGL;
+#elif SOKOL_GLCORE33
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_CONTEXT_PROFILE_MASK, SDL.SDL_GLprofile.SDL_GL_CONTEXT_PROFILE_CORE);
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_CONTEXT_FLAGS, 0);
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_DOUBLEBUFFER, 1);
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_DEPTH_SIZE, 24);
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_STENCIL_SIZE, 8);
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+            SDL.SDL_GL_SetAttribute(SDL.SDL_GLattr.SDL_GL_CONTEXT_MINOR_VERSION, 3);
 
-                    _desc.WindowSetupFlags |= SDL_WindowFlags.SDL_WINDOW_OPENGL;
-
-                    break;
-            }
+            _desc.WindowSetupFlags |= SDL_WindowFlags.SDL_WINDOW_OPENGL;
+#else
+            throw new NotImplementedException();
+#endif
         }
 
-        private static BackendContext CreateContext(BackendType backend, IntPtr window)
+        private static BackendContext CreateContext( IntPtr window)
         {
-            BackendContext ctx = default;
+#if SOKOL_D3D11
+            var info = new SDL_SysWMinfo();
+            SDL_VERSION(out info.version);
+            SDL_GetWindowWMInfo(window, ref info);
 
-            if (backend == BackendType.D3D11)
+            if (info.subsystem == SDL_SYSWM_TYPE.SDL_SYSWM_WINDOWS)
             {
-                var info = new SDL_SysWMinfo();
-                SDL_VERSION(out info.version);
-                SDL_GetWindowWMInfo(window, ref info);
-
-                if (info.subsystem == SDL_SYSWM_TYPE.SDL_SYSWM_WINDOWS)
-                {
-                    ctx = D3D11.Setup(info.info.win.window, _desc.WindowWidth, _desc.WindowHeight);
-                }
-            }
-            else if (backend == BackendType.OpenGL)
-            {
-                ctx = OpenGL.Setup(window, _desc.WindowWidth, _desc.WindowHeight);
+                return D3D11.Setup(info.info.win.window, _desc.WindowWidth, _desc.WindowHeight);
             }
 
-            return ctx;
+            throw new NotImplementedException();
+#elif SOKOL_GLES2 || SOKOL_GLES3 || SOKOL_GLCORE33
+            return OpenGL.Setup(window, _desc.WindowWidth, _desc.WindowHeight);
+#else
+            throw new NotImplementedException();
+#endif  
         }
 
         private static void HandleEvents(in BackendContext ctx, ref SDL_Event ev)
@@ -214,24 +213,12 @@ namespace noname
             public string WindowTitle;
             public int WindowX, WindowY, WindowWidth, WindowHeight;
             public SDL_WindowFlags WindowSetupFlags;
-
-            public BackendType BackendType;
+            public void* Userdata;
 
             public delegate* unmanaged<void*, void> OnInit;
             public delegate* unmanaged<void*, void> OnShutdown;
             public delegate* unmanaged<void*, void> OnFrame;
             public delegate* unmanaged<SDL_Event*, void*, void> OnEvent;
-
-            public void* Userdata;
-        }
-
-        public enum BackendType
-        {
-            Detect,
-            D3D11,
-            OpenGL,
-            Metal,
-            WebGL
         }
     }
 

@@ -1,168 +1,153 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
 using bottlenoselabs;
 using SDL2;
 using Sokol;
+using noname;
 
-namespace noname
-{
-    unsafe class Program
+unsafe
+{    
+    Backend.Run(new Backend.BackendDescription()
     {
-        private static ImGuiRenderer _imgui;
-        private static ImGui.Runtime.CString _buffer = (byte*)NativeMemory.AllocZeroed(16);
+        WindowTitle = "backend test",
+        OnInit = &OnInit,
+        OnShutdown = &OnShutdown,
+        OnFrame = &OnFrame,
+        OnEvent = &OnEvent,
+        WindowSetupFlags = SDL.SDL_WindowFlags.SDL_WINDOW_SHOWN |
+                           SDL.SDL_WindowFlags.SDL_WINDOW_RESIZABLE |
+                           SDL.SDL_WindowFlags.SDL_WINDOW_MOUSE_FOCUS,
+    });
 
-        static void Main(string[] args)
+
+    [UnmanagedCallersOnly]
+    static void OnInit(void* userdata)
+    {
+        Gfx.Setup(new Gfx.Desc()
         {
-            Backend.Run(new Backend.BackendDescription()
-            {
-                BackendType = Backend.BackendType.D3D11,
-                WindowTitle = "backend d3d11 test",
-                OnInit = &OnInit,
-                OnShutdown = &OnShutdown,
-                OnFrame = &OnFrame,
-                OnEvent = &OnEvent,
-                WindowSetupFlags = SDL.SDL_WindowFlags.SDL_WINDOW_SHOWN |
-                                SDL.SDL_WindowFlags.SDL_WINDOW_RESIZABLE |
-                                SDL.SDL_WindowFlags.SDL_WINDOW_MOUSE_FOCUS,
-            });
-        }
+            Context = Backend.GetContext()
+        });
 
-
-        [UnmanagedCallersOnly]
-        private static void OnInit(void* userdata)
+        /* a vertex buffer with 3 vertices */
+        ReadOnlySpan<float> vertices = stackalloc float[]
         {
-            Gfx.Setup(new Gfx.Desc()
-            {
-                Context = Backend.GetContext()
-            });
+            // positions            // colors
+            0.0f,
+            0.5f,
+            0.5f,
+            1.0f,
+            0.0f,
+            0.0f,
+            1.0f,
+            0.5f,
+            -0.5f,
+            0.5f,
+            0.0f,
+            1.0f,
+            0.0f,
+            1.0f,
+            -0.5f,
+            -0.5f,
+            0.5f,
+            0.0f,
+            0.0f,
+            1.0f,
+            1.0f
+        };
 
-            /* a vertex buffer with 3 vertices */
-            ReadOnlySpan<float> vertices = stackalloc float[]
-            {
-                // positions            // colors
-                0.0f,
-                0.5f,
-                0.5f,
-                1.0f,
-                0.0f,
-                0.0f,
-                1.0f,
-                0.5f,
-                -0.5f,
-                0.5f,
-                0.0f,
-                1.0f,
-                0.0f,
-                1.0f,
-                -0.5f,
-                -0.5f,
-                0.5f,
-                0.0f,
-                0.0f,
-                1.0f,
-                1.0f
-            };
+        State.Bindings.VertexBuffers[0] = Gfx.MakeBuffer(
+            vertices,
+            "triangle-vertices");
 
-            State.Bindings.VertexBuffers[0] = Gfx.MakeBuffer(
-                vertices,
-                "triangle-vertices");
-
-            Gfx.Shader shd = Gfx.MakeShader(GetShaderDesc());
-            Gfx.PipelineDesc pipelineDesc = new()
-            {
-                Shader = shd,
-                Label = "triangle-pipeline",
-            };
-            pipelineDesc.Layout.Attrs[0].Format = Gfx.VertexFormat.Float3;
-            pipelineDesc.Layout.Attrs[1].Format = Gfx.VertexFormat.Float4;
-            State.Pipeline = Gfx.MakePipeline(pipelineDesc);
-
-
-
-            var dbgText = new DebugText.Desc();
-            ref var d = ref dbgText.Fonts[0];
-            d = DebugText.FontC64();
-            DebugText.Setup(dbgText);
-
-
-            _imgui = new ImGuiRenderer();
-            _imgui.Setup(new ImGuiRenderer.ImGuiDesc()
-            {
-                //MaxVertices = ushort.MaxValue + 1,
-                //IniFilename = String.Empty,
-                //SampleCount = 1,
-                //ColorFormat = Gfx.PixelFormat.Rgba8,
-                //DepthFormat = Gfx.PixelFormat.DepthStencil,
-            });
-        }
-
-        [UnmanagedCallersOnly]
-        private static void OnShutdown(void* userdata)
+        Gfx.Shader shd = Gfx.MakeShader(GetShaderDesc());
+        Gfx.PipelineDesc pipelineDesc = new()
         {
-            _imgui?.Shutdown();
+            Shader = shd,
+            Label = "triangle-pipeline",
+        };
+        pipelineDesc.Layout.Attrs[0].Format = Gfx.VertexFormat.Float3;
+        pipelineDesc.Layout.Attrs[1].Format = Gfx.VertexFormat.Float4;
+        State.Pipeline = Gfx.MakePipeline(pipelineDesc);
 
-            NativeMemory.Free((void*) _buffer._pointer);
-        }
 
-        [UnmanagedCallersOnly]
-        private static void OnFrame(void* userdata)
+
+        var dbgText = new DebugText.Desc();
+        ref var d = ref dbgText.Fonts[0];
+        d = DebugText.FontC64();
+        DebugText.Setup(dbgText);
+
+
+        ImGuiRenderer.Setup(new ImGuiRenderer.ImGuiDesc()
         {
-            _imgui.NewFrame(new ImGuiRenderer.ImGuiFrameDesc()
-            {
-                Window = Backend.Window,
-                DpiScale = 1.0f,
-                Width = Backend.Width,
-                Height = Backend.Height,
-                DeltaTime = 1f / 60f,
-                GlobalMouseState = true
-            });
+            //MaxVertices = ushort.MaxValue + 1,
+            //IniFilename = String.Empty,
+            //SampleCount = 1,
+            //ColorFormat = Gfx.PixelFormat.Rgba8,
+            //DepthFormat = Gfx.PixelFormat.DepthStencil,
+        });
+    }
 
-            
-            ImGui.igInputText("label", _buffer, 16, 0, default, null);
-            ImGui.igShowDemoWindow(null);
+    [UnmanagedCallersOnly]
+    static void OnShutdown(void* userdata)
+    {
+        ImGuiRenderer.Shutdown();
+    }
 
-
-            string text = "SOKOL + SDL TEST";
-            DebugText.Font(0);
-            DebugText.Canvas(Backend.Width, Backend.Height);
-            DebugText.Origin(0f, 0f);
-            DebugText.Pos((Backend.Width / 8f) * 0.5f, (Backend.Height / 8f) * 0.5f);
-            DebugText.Puts(text);
-
-            Gfx.BeginDefaultPass(default, Backend.Width, Backend.Height);
-            Gfx.ApplyPipeline(State.Pipeline);
-            Gfx.ApplyBindings(State.Bindings);
-            Gfx.Draw(0, 3, 1);
-
-            DebugText.Draw();
-
-            _imgui.Render();
-
-            Gfx.EndPass();
-            Gfx.Commit();
-
-            Thread.Sleep(1);
-        }
-
-        [UnmanagedCallersOnly]
-        private static void OnEvent(SDL.SDL_Event* ev, void* userdata)
+    [UnmanagedCallersOnly]
+    static void OnFrame(void* userdata)
+    {
+        ImGuiRenderer.NewFrame(new ImGuiRenderer.ImGuiFrameDesc()
         {
-            _imgui?.HandleEvent(ev);
-        }
+            Window = Backend.Window,
+            DpiScale = 1.0f,
+            Width = Backend.Width,
+            Height = Backend.Height,
+            DeltaTime = 1f / 60f,
+            GlobalMouseState = true
+        });
 
-        static Gfx.ShaderDesc GetShaderDesc()
+
+        ImGui.igShowDemoWindow(null);
+
+
+        string text = "SOKOL + SDL TEST";
+        DebugText.Font(0);
+        DebugText.Canvas(Backend.Width, Backend.Height);
+        DebugText.Origin(0f, 0f);
+        DebugText.Pos((Backend.Width / 8f) * 0.5f, (Backend.Height / 8f) * 0.5f);
+        DebugText.Puts(text);
+
+        Gfx.BeginDefaultPass(default, Backend.Width, Backend.Height);
+        Gfx.ApplyPipeline(State.Pipeline);
+        Gfx.ApplyBindings(State.Bindings);
+        Gfx.Draw(0, 3, 1);
+
+        DebugText.Draw();
+
+        ImGuiRenderer.Render();
+
+        Gfx.EndPass();
+        Gfx.Commit();
+
+        Thread.Sleep(1);
+    }
+
+    [UnmanagedCallersOnly]
+    static void OnEvent(SDL.SDL_Event* ev, void* userdata)
+    {
+        ImGuiRenderer.HandleEvent(ev);
+    }
+
+    static Gfx.ShaderDesc GetShaderDesc()
+    {
+        Gfx.ShaderDesc desc = default;
+        switch (Gfx.QueryBackend())
         {
-            Gfx.ShaderDesc desc = default;
-            switch (Gfx.QueryBackend())
-            {
-                case Gfx.Backend.D3d11:
-                    desc.Attrs[0].SemName = "POS";
-                    desc.Attrs[1].SemName = "COLOR";
-                    desc.Vs.Source = @"
+            case Gfx.Backend.D3d11:
+                desc.Attrs[0].SemName = "POS";
+                desc.Attrs[1].SemName = "COLOR";
+                desc.Vs.Source = @"
                 struct vs_in {
                   float4 pos: POS;
                   float4 color: COLOR;
@@ -177,15 +162,15 @@ namespace noname
                   outp.color = inp.color;
                   return outp;
                 }";
-                    desc.Fs.Source = @"
+                desc.Fs.Source = @"
                 float4 main(float4 color: COLOR0): SV_Target0 {
                   return color;
                 }";
-                    break;
-                case Gfx.Backend.Glcore33:
-                    desc.Attrs[0].Name = "position";
-                    desc.Attrs[1].Name = "color0";
-                    desc.Vs.Source = @"
+                break;
+            case Gfx.Backend.Glcore33:
+                desc.Attrs[0].Name = "position";
+                desc.Attrs[1].Name = "color0";
+                desc.Vs.Source = @"
 # version 330
                 in vec4 position;
                 in vec4 color0;
@@ -195,16 +180,16 @@ namespace noname
                   color = color0;
                 }";
 
-                    desc.Fs.Source = @"
+                desc.Fs.Source = @"
 # version 330
                 in vec4 color;
                 out vec4 frag_color;
                 void main() {
                   frag_color = color;
                 }";
-                    break;
-                case Gfx.Backend.MetalMacos:
-                    desc.Vs.Source = @"
+                break;
+            case Gfx.Backend.MetalMacos:
+                desc.Vs.Source = @"
 # include <metal_stdlib>
                 using namespace metal;
                 struct vs_in {
@@ -221,21 +206,20 @@ namespace noname
                   outp.color = inp.color;
                   return outp;
                 }";
-                    desc.Fs.Source = @"
+                desc.Fs.Source = @"
 # include <metal_stdlib>
                 using namespace metal;
                 fragment float4 _main(float4 color [[stage_in]]) {
                    return color;
                 };";
-                    break;
-            }
-            return desc;
+                break;
         }
+        return desc;
+    }  
+}
 
-        static class State
-        {
-            public static Gfx.Pipeline Pipeline;
-            public static Gfx.Bindings Bindings;
-        }
-    }
+static class State
+{
+    public static Gfx.Pipeline Pipeline;
+    public static Gfx.Bindings Bindings;
 }

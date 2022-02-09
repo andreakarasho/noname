@@ -7,6 +7,7 @@
 		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<PlatformTarget>x64</PlatformTarget>
+		<DefineConstants>$(DefineConstants);SOKOL_D3D11</DefineConstants>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -20,4 +21,33 @@
 		<Compile Include="../external/sokol-csharp/src/sokol/DebugText.cs" />
 	</ItemGroup>
 
+	
+	<!-- START AOT -->
+
+	<ItemGroup Condition="'$(AOT)' == 'true'">
+		<PackageReference Include="Microsoft.DotNet.ILCompiler" Version="7.0.0-*" />
+	</ItemGroup>
+
+	<PropertyGroup Condition="'$(AOT)' == 'true'">
+		<IlcGenerateCompleteTypeMetadata>false</IlcGenerateCompleteTypeMetadata>
+		<IlcOptimizationPreference>Size</IlcOptimizationPreference>
+		<IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
+		<IlcInvariantGlobalization>true</IlcInvariantGlobalization>
+		<IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
+		<IlcDisableReflection>true</IlcDisableReflection>
+		<NoStdLib>true</NoStdLib>
+		<NoConfig>true</NoConfig>
+		<Optimize>true</Optimize>
+		<IlcOptimizationPreference>Size</IlcOptimizationPreference>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+	</PropertyGroup>
+
+	<ItemGroup Condition="'$(AOT)' == 'true'">
+		<DirectPInvoke Include="sokol" />
+		<NativeLibrary Include="sokol.lib" Condition="$(RuntimeIdentifier.StartsWith('win'))" />
+		<NativeLibrary Include="sokol.a" Condition="!$(RuntimeIdentifier.StartsWith('win'))" />
+	</ItemGroup>
+	
+	<!-- END AOT-->
+	
 </Project>
