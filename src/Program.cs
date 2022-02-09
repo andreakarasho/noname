@@ -78,14 +78,7 @@ unsafe
         DebugText.Setup(dbgText);
 
 
-        ImGuiRenderer.Setup(new ImGuiRenderer.ImGuiDesc()
-        {
-            //MaxVertices = ushort.MaxValue + 1,
-            //IniFilename = String.Empty,
-            //SampleCount = 1,
-            //ColorFormat = Gfx.PixelFormat.Rgba8,
-            //DepthFormat = Gfx.PixelFormat.DepthStencil,
-        });
+        ImGuiRenderer.Setup(default);
     }
 
     [UnmanagedCallersOnly]
@@ -103,13 +96,11 @@ unsafe
             DpiScale = 1.0f,
             Width = Backend.Width,
             Height = Backend.Height,
-            DeltaTime = 1f / 60f,
             GlobalMouseState = true
         });
 
 
         ImGui.igShowDemoWindow(null);
-
 
         string text = "SOKOL + SDL TEST";
         DebugText.Font(0);
@@ -124,7 +115,6 @@ unsafe
         Gfx.Draw(0, 3, 1);
 
         DebugText.Draw();
-
         ImGuiRenderer.Render();
 
         Gfx.EndPass();

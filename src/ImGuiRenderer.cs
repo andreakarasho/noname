@@ -43,7 +43,6 @@ namespace noname
         {
             public IntPtr Window;
             public int Width, Height;
-            public float DeltaTime;
             public float DpiScale;
             public bool GlobalMouseState;
         }
