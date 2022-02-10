@@ -5,11 +5,11 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System;
-using Sokol;
+using bottlenoselabs;
 using SDL2;
 
 using static SDL2.SDL;
-
+using static bottlenoselabs.sokol;
 
 namespace noname
 {
@@ -113,7 +113,7 @@ namespace noname
         }
 
         
-        public static Gfx.ContextDesc GetContext()
+        public static sg_context_desc GetContext()
         {
 #if SOKOL_D3D11
             return D3D11.GetContext();

@@ -10,15 +10,13 @@
 		<DefineConstants>$(DefineConstants);SOKOL_D3D11</DefineConstants>
 	</PropertyGroup>
 
+	
 	<ItemGroup>
 		<Compile Include="../external/SDL2-CS/src/SDL2.cs" />
-		<Compile Include="../external/sokol-csharp/src/sokol/Gfx.cs" />
-		<Compile Include="../external/sokol-csharp/src/sokol/Audio.cs" />
-		<Compile Include="../external/sokol-csharp/src/sokol/Gl.cs" />
-		<Compile Include="../external/sokol-csharp/src/sokol/Time.cs" />
-		<Compile Include="../external/sokol-csharp/src/sokol/Shape.cs" />
-		<Compile Include="../external/sokol-csharp/src/sokol/Extras.cs" />
-		<Compile Include="../external/sokol-csharp/src/sokol/DebugText.cs" />
+		<Compile Include="../external/imgui-cs/src/cs/production/imgui/imgui.cs" />
+		<Compile Include="../external/sokol-cs/src/cs/production/sokol/sokol.cs" />
+		<Compile Include="../external/sokol-cs/src/cs/production/sokol/Rgba32F.cs" />
+		<Compile Include="../external/sokol-cs/src/cs/production/sokol/Rgba32F.Colors.cs" />
 	</ItemGroup>
 
 	
@@ -42,11 +40,12 @@
 		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 	</PropertyGroup>
 
-	<ItemGroup Condition="'$(AOT)' == 'true'">
+	<!-- <ItemGroup Condition="'$(AOT)' == 'true'">
 		<DirectPInvoke Include="sokol" />
 		<NativeLibrary Include="sokol.lib" Condition="$(RuntimeIdentifier.StartsWith('win'))" />
 		<NativeLibrary Include="sokol.a" Condition="!$(RuntimeIdentifier.StartsWith('win'))" />
 	</ItemGroup>
+	-->
 	
 	<!-- END AOT-->
 	

@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-using Sokol;
 using SDL2;
 using System.Runtime.CompilerServices;
+using static bottlenoselabs.sokol;
 
 namespace noname
 {
@@ -56,16 +56,22 @@ namespace noname
 
        
 
-        public static Gfx.ContextDesc GetContext()
+        public static sg_context_desc GetContext()
         {
-            var ctx = new Gfx.ContextDesc
+            var ctx = new sg_context_desc
             {
-                D3d11 = new Gfx.D3d11ContextDesc()
+                d3d11 = new sg_d3d11_context_desc
                 {
-                    Device = (void*)_state.Device.Ptr,
-                    DeviceContext = (void*)_state.Context,
-                    RenderTargetViewCb = (delegate* unmanaged<void*>)&GetRenderTargetView,
-                    DepthStencilViewCb = (delegate* unmanaged<void*>)&GetDepthStencilView
+                    device = (void*)_state.Device.Ptr,
+                    device_context = (void*)_state.Context,
+                    render_target_view_cb = new FnPtr_VoidPtr()
+                    {
+                        Pointer = (delegate* unmanaged<void*>)&GetRenderTargetView
+                    },
+                    depth_stencil_view_cb = new FnPtr_VoidPtr()
+                    {
+                        Pointer = (delegate* unmanaged<void*>)&GetDepthStencilView
+                    }
                 }
             };
 

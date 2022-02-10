@@ -7,18 +7,19 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-using bottlenoselabs;
 using SDL2;
-using Sokol;
+
+using static bottlenoselabs.imgui;
+using static bottlenoselabs.sokol;
 
 namespace noname
 {
     unsafe class ImGuiRenderer
     {
-        private ImGui.ImGuiContext* _context;
+        private ImGuiContext* _context;
         private ImGuiState _state;
         private ulong _timer;
-        private readonly IntPtr[] _cursors = new IntPtr[ImGui.ImGuiMouseCursor_COUNT];
+        private readonly IntPtr[] _cursors = new IntPtr[ImGuiMouseCursor_COUNT];
 
 
         private ImGuiRenderer()
@@ -33,8 +34,8 @@ namespace noname
         public struct ImGuiDesc
         {
             public int MaxVertices;
-            public Gfx.PixelFormat ColorFormat;
-            public Gfx.PixelFormat DepthFormat;
+            public sg_pixel_format ColorFormat;
+            public sg_pixel_format DepthFormat;
             public int SampleCount;
             public string IniFilename;
         }
@@ -51,16 +52,16 @@ namespace noname
         {
             public ImGuiDesc Desc;
             public float DpiScale;
-            public Gfx.Buffer VBuf;
-            public Gfx.Buffer IBuf;
-            public Gfx.Image Img;
-            public Gfx.Shader Shd;
-            public Gfx.Pipeline Pip;
+            public sg_buffer VBuf;
+            public sg_buffer IBuf;
+            public sg_image Img;
+            public sg_shader Shd;
+            public sg_pipeline Pip;
 
             public bool IsOSX;
 
-            public Gfx.Range Vertices;
-            public Gfx.Range Indices;
+            public sg_range Vertices;
+            public sg_range Indices;
         }
 
 
@@ -81,26 +82,26 @@ namespace noname
         {
             _state.Desc = desc;
 
-            _context = ImGui.igCreateContext(null);
-            ImGui.igSetCurrentContext(_context);
-            ImGui.igStyleColorsDark(ImGui.igGetStyle());
+            _context = igCreateContext(null);
+            igSetCurrentContext(_context);
+            igStyleColorsDark(igGetStyle());
 
-            ref var io = ref Unsafe.AsRef<ImGui.ImGuiIO>(ImGui.igGetIO());
-            io.BackendFlags |= ImGui.ImGuiBackendFlags_RendererHasVtxOffset;
-            io.BackendFlags |= ImGui.ImGuiBackendFlags_HasMouseCursors | ImGui.ImGuiBackendFlags_HasSetMousePos;
+            ref var io = ref Unsafe.AsRef<ImGuiIO>(igGetIO());
+            io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
+            io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors | ImGuiBackendFlags_HasSetMousePos;
 
             io.GetClipboardTextFn.Pointer = &GetClipboardText;
             io.SetClipboardTextFn.Pointer = &SetClipboardText;
 
-            _cursors[ImGui.ImGuiMouseCursor_Arrow] = SDL.SDL_CreateSystemCursor(SDL.SDL_SystemCursor.SDL_SYSTEM_CURSOR_ARROW);
-            _cursors[ImGui.ImGuiMouseCursor_TextInput] = SDL.SDL_CreateSystemCursor(SDL.SDL_SystemCursor.SDL_SYSTEM_CURSOR_IBEAM);
-            _cursors[ImGui.ImGuiMouseCursor_ResizeAll] = SDL.SDL_CreateSystemCursor(SDL.SDL_SystemCursor.SDL_SYSTEM_CURSOR_SIZEALL);
-            _cursors[ImGui.ImGuiMouseCursor_ResizeNS] = SDL.SDL_CreateSystemCursor(SDL.SDL_SystemCursor.SDL_SYSTEM_CURSOR_SIZENS);
-            _cursors[ImGui.ImGuiMouseCursor_ResizeEW] = SDL.SDL_CreateSystemCursor(SDL.SDL_SystemCursor.SDL_SYSTEM_CURSOR_SIZEWE);
-            _cursors[ImGui.ImGuiMouseCursor_ResizeNESW] = SDL.SDL_CreateSystemCursor(SDL.SDL_SystemCursor.SDL_SYSTEM_CURSOR_SIZENESW);
-            _cursors[ImGui.ImGuiMouseCursor_ResizeNWSE] = SDL.SDL_CreateSystemCursor(SDL.SDL_SystemCursor.SDL_SYSTEM_CURSOR_SIZENWSE);
-            _cursors[ImGui.ImGuiMouseCursor_Hand] = SDL.SDL_CreateSystemCursor(SDL.SDL_SystemCursor.SDL_SYSTEM_CURSOR_HAND);
-            _cursors[ImGui.ImGuiMouseCursor_NotAllowed] = SDL.SDL_CreateSystemCursor(SDL.SDL_SystemCursor.SDL_SYSTEM_CURSOR_NO);
+            _cursors[ImGuiMouseCursor_Arrow] = SDL.SDL_CreateSystemCursor(SDL.SDL_SystemCursor.SDL_SYSTEM_CURSOR_ARROW);
+            _cursors[ImGuiMouseCursor_TextInput] = SDL.SDL_CreateSystemCursor(SDL.SDL_SystemCursor.SDL_SYSTEM_CURSOR_IBEAM);
+            _cursors[ImGuiMouseCursor_ResizeAll] = SDL.SDL_CreateSystemCursor(SDL.SDL_SystemCursor.SDL_SYSTEM_CURSOR_SIZEALL);
+            _cursors[ImGuiMouseCursor_ResizeNS] = SDL.SDL_CreateSystemCursor(SDL.SDL_SystemCursor.SDL_SYSTEM_CURSOR_SIZENS);
+            _cursors[ImGuiMouseCursor_ResizeEW] = SDL.SDL_CreateSystemCursor(SDL.SDL_SystemCursor.SDL_SYSTEM_CURSOR_SIZEWE);
+            _cursors[ImGuiMouseCursor_ResizeNESW] = SDL.SDL_CreateSystemCursor(SDL.SDL_SystemCursor.SDL_SYSTEM_CURSOR_SIZENESW);
+            _cursors[ImGuiMouseCursor_ResizeNWSE] = SDL.SDL_CreateSystemCursor(SDL.SDL_SystemCursor.SDL_SYSTEM_CURSOR_SIZENWSE);
+            _cursors[ImGuiMouseCursor_Hand] = SDL.SDL_CreateSystemCursor(SDL.SDL_SystemCursor.SDL_SYSTEM_CURSOR_HAND);
+            _cursors[ImGuiMouseCursor_NotAllowed] = SDL.SDL_CreateSystemCursor(SDL.SDL_SystemCursor.SDL_SYSTEM_CURSOR_NO);
 
 
             io.IniFilename = _state.Desc.IniFilename ?? string.Empty;
@@ -108,31 +109,31 @@ namespace noname
             _state.Desc.MaxVertices = _state.Desc.MaxVertices == 0 ? ushort.MaxValue + 1 : _state.Desc.MaxVertices;
             _state.DpiScale = 1.0f;
 
-            _state.Vertices.Size = (nuint)(_state.Desc.MaxVertices * sizeof(ImGui.ImDrawVert));
-            _state.Vertices.Ptr = (void*) Marshal.AllocHGlobal((int) _state.Vertices.Size);
+            _state.Vertices.size = (nuint)(_state.Desc.MaxVertices * sizeof(ImDrawVert));
+            _state.Vertices.ptr = (void*) Marshal.AllocHGlobal((int) _state.Vertices.size);
 
-            _state.Indices.Size = (nuint)(_state.Desc.MaxVertices * 3 * sizeof(ImGui.ImDrawIdx));
-            _state.Indices.Ptr = (void*)Marshal.AllocHGlobal((int)_state.Indices.Size);
-
-
-            var vbDesc = new Gfx.BufferDesc();
-            vbDesc.Usage = Gfx.Usage.Stream;
-            vbDesc.Size = _state.Vertices.Size;
-            _state.VBuf = Gfx.MakeBuffer(vbDesc);
-
-            var ibDesc = new Gfx.BufferDesc();
-            ibDesc.Type = Gfx.BufferType.Indexbuffer;
-            ibDesc.Usage = Gfx.Usage.Stream;
-            ibDesc.Size = _state.Indices.Size;
-            _state.IBuf = Gfx.MakeBuffer(ibDesc);
+            _state.Indices.size = (nuint)(_state.Desc.MaxVertices * 3 * sizeof(ImDrawIdx));
+            _state.Indices.ptr = (void*)Marshal.AllocHGlobal((int)_state.Indices.size);
 
 
+            var vbDesc = new sg_buffer_desc();
+            vbDesc.usage = sg_usage.SG_USAGE_STREAM;
+            vbDesc.size = _state.Vertices.size;
+            _state.VBuf = sg_make_buffer(&vbDesc);
 
-            _ = ImGui.ImFontAtlas_AddFontDefault(io.Fonts, null);
+            var ibDesc = new sg_buffer_desc();
+            ibDesc.type = sg_buffer_type.SG_BUFFERTYPE_INDEXBUFFER;
+            ibDesc.usage = sg_usage.SG_USAGE_STREAM;
+            ibDesc.size = _state.Indices.size;
+            _state.IBuf = sg_make_buffer(&ibDesc);
+
+
+
+            _ = ImFontAtlas_AddFontDefault(io.Fonts, null);
 
             ulong* fontPixels = null;
             long fontWidth = 0, fontHeight = 0, bytesPerPixels = 0;
-            ImGui.ImFontAtlas_GetTexDataAsRGBA32
+            ImFontAtlas_GetTexDataAsRGBA32
             (
                 io.Fonts,
                 &fontPixels,
@@ -141,123 +142,123 @@ namespace noname
                 (long*) Unsafe.AsPointer(ref bytesPerPixels)
             );
 
-            var imgDesc = new Gfx.ImageDesc();
-            imgDesc.Width = (int) fontWidth;
-            imgDesc.Height = (int) fontHeight;
-            imgDesc.PixelFormat = Gfx.PixelFormat.Rgba8;
-            imgDesc.WrapU = Gfx.Wrap.ClampToEdge;
-            imgDesc.WrapV = Gfx.Wrap.ClampToEdge;
-            imgDesc.Data.Subimage[0, 0] = new Gfx.Range()
+            var imgDesc = new sg_image_desc();
+            imgDesc.width = (int) fontWidth;
+            imgDesc.height = (int) fontHeight;
+            imgDesc.pixel_format = sg_pixel_format.SG_PIXELFORMAT_RGBA8;
+            imgDesc.wrap_u = sg_wrap.SG_WRAP_CLAMP_TO_EDGE;
+            imgDesc.wrap_v = sg_wrap.SG_WRAP_CLAMP_TO_EDGE;
+            imgDesc.data.subimage[0] = new sg_range()
             {
-                Ptr = (byte*)fontPixels,
-                Size = (nuint)(fontWidth * fontHeight * 4)
+                ptr = (byte*)fontPixels,
+                size = (nuint)(fontWidth * fontHeight * 4)
             };
-            _state.Img = Gfx.MakeImage(imgDesc);
-            io.Fonts->TexID = (ImGui.ImTextureID)(void*)_state.Img.Id;
+            _state.Img = sg_make_image(&imgDesc);
+            io.Fonts->TexID = (ImTextureID)(void*)_state.Img.id;
 
-            var shaderDesc = new Gfx.ShaderDesc();
-            shaderDesc.Attrs[0].Name = "position";
-            shaderDesc.Attrs[1].Name = "texcoord0";
-            shaderDesc.Attrs[2].Name = "color0";
-            shaderDesc.Attrs[0].SemName = "TEXCOORD";
-            shaderDesc.Attrs[1].SemName = "TEXCOORD";
-            shaderDesc.Attrs[2].SemName = "TEXCOORD";
-            shaderDesc.Attrs[0].SemIndex = 0;
-            shaderDesc.Attrs[1].SemIndex = 1;
-            shaderDesc.Attrs[2].SemIndex = 2;
+            var shaderDesc = new sg_shader_desc();
+            shaderDesc.attrs[0].name = "position";
+            shaderDesc.attrs[1].name = "texcoord0";
+            shaderDesc.attrs[2].name = "color0";
+            shaderDesc.attrs[0].sem_name = "TEXCOORD";
+            shaderDesc.attrs[1].sem_name = "TEXCOORD";
+            shaderDesc.attrs[2].sem_name = "TEXCOORD";
+            shaderDesc.attrs[0].sem_index = 0;
+            shaderDesc.attrs[1].sem_index = 1;
+            shaderDesc.attrs[2].sem_index = 2;
 
-            ref var ub = ref shaderDesc.Vs.UniformBlocks[0];
-            ub.Size = (nuint) sizeof(ImGuiVsParam);
-            ub.Uniforms[0].Name = "vs_params";
-            ub.Uniforms[0].Type = Gfx.UniformType.Float4;
-            ub.Uniforms[0].ArrayCount = 1;
+            ref var ub = ref shaderDesc.vs.uniform_blocks[0];
+            ub.size = (nuint) sizeof(ImGuiVsParam);
+            ub.uniforms[0].name = "vs_params";
+            ub.uniforms[0].type = sg_uniform_type.SG_UNIFORMTYPE_FLOAT4;
+            ub.uniforms[0].array_count = 1;
             
-            shaderDesc.Fs.Images[0].Name = "tex";
-            shaderDesc.Fs.Images[0].ImageType = Gfx.ImageType._2d;
-            shaderDesc.Fs.Images[0].SamplerType = Gfx.SamplerType.Float;
+            shaderDesc.fs.images[0].name = "tex";
+            shaderDesc.fs.images[0].image_type = sg_image_type.SG_IMAGETYPE_2D;
+            shaderDesc.fs.images[0].sampler_type = sg_sampler_type.SG_SAMPLERTYPE_FLOAT;
 
             byte[] vs = null, fs = null;
 
-            switch (Gfx.QueryBackend())
+            switch (sg_query_backend())
             {
-                case Gfx.Backend.D3d11:
+                case sg_backend.SG_BACKEND_D3D11:
                     vs = _simgui_vs_bytecode_hlsl4;
                     fs = _simgui_fs_bytecode_hlsl4;
                     break;
 
-                case Gfx.Backend.Gles2:
-                case Gfx.Backend.Gles3:
+                case sg_backend.SG_BACKEND_GLES2:
+                case sg_backend.SG_BACKEND_GLES3:
                     vs = _simgui_vs_source_glsl100;
                     fs = _simgui_fs_source_glsl100;
                     break;   
 
-                case Gfx.Backend.Glcore33:
+                case sg_backend.SG_BACKEND_GLCORE33:
                     vs = _simgui_vs_source_glsl330;
                     fs = _simgui_fs_source_glsl330;
                     break;
 
-                case Gfx.Backend.MetalIos:
-                    shaderDesc.Vs.Entry = "main0";
-                    shaderDesc.Fs.Entry = "main0";
+                case sg_backend.SG_BACKEND_METAL_IOS:
+                    shaderDesc.vs.entry = "main0";
+                    shaderDesc.fs.entry = "main0";
                     vs = _simgui_vs_bytecode_metal_ios;
                     fs = _simgui_fs_bytecode_metal_ios;
                     break;
 
-                case Gfx.Backend.MetalMacos:
-                    shaderDesc.Vs.Entry = "main0";
-                    shaderDesc.Fs.Entry = "main0";
+                case sg_backend.SG_BACKEND_METAL_MACOS:
+                    shaderDesc.vs.entry = "main0";
+                    shaderDesc.fs.entry = "main0";
                     vs = _simgui_vs_bytecode_metal_macos;
                     fs = _simgui_fs_bytecode_metal_macos;
                     break;
 
-                case Gfx.Backend.MetalSimulator:
-                    shaderDesc.Vs.Entry = "main0";
-                    shaderDesc.Fs.Entry = "main0";
+                case sg_backend.SG_BACKEND_METAL_SIMULATOR:
+                    shaderDesc.vs.entry = "main0";
+                    shaderDesc.fs.entry = "main0";
                     vs = _simgui_vs_source_metal_sim;
                     fs = _simgui_fs_source_metal_sim;
                     break;
 
-                case Gfx.Backend.Wgpu:
+                case sg_backend.SG_BACKEND_WGPU:
                     vs = _simgui_vs_bytecode_wgpu;
                     fs = _simgui_fs_bytecode_wgpu;
                     break;
             }
 
-            shaderDesc.Vs.Bytecode = new() { Ptr = Unsafe.AsPointer(ref vs[0]), Size = (nuint)vs.Length };
-            shaderDesc.Fs.Bytecode = new() { Ptr = Unsafe.AsPointer(ref fs[0]), Size = (nuint)fs.Length };
-            _state.Shd = Gfx.MakeShader(shaderDesc);
+            shaderDesc.vs.bytecode = new() { ptr = Unsafe.AsPointer(ref vs[0]), size = (nuint)vs.Length };
+            shaderDesc.fs.bytecode = new() { ptr = Unsafe.AsPointer(ref fs[0]), size = (nuint)fs.Length };
+            _state.Shd = sg_make_shader(&shaderDesc);
 
 
-            var pipeLineDesc = new Gfx.PipelineDesc();
-            pipeLineDesc.Layout.Buffers[0].Stride = sizeof(ImGui.ImDrawVert);
-            ref var attrs = ref pipeLineDesc.Layout.Attrs;
-            attrs[0].Offset = 0;
-            attrs[0].Format = Gfx.VertexFormat.Float2;
-            attrs[1].Offset = 8;
-            attrs[1].Format = Gfx.VertexFormat.Float2;
-            attrs[2].Offset = 16;
-            attrs[2].Format = Gfx.VertexFormat.Ubyte4n;
+            var pipeLineDesc = new sg_pipeline_desc();
+            pipeLineDesc.layout.buffers[0].stride = sizeof(ImDrawVert);
+            var attrs = pipeLineDesc.layout.attrs;
+            attrs[0].offset = 0;
+            attrs[0].format = sg_vertex_format.SG_VERTEXFORMAT_FLOAT2;
+            attrs[1].offset = 8;
+            attrs[1].format = sg_vertex_format.SG_VERTEXFORMAT_FLOAT2;
+            attrs[2].offset = 16;
+            attrs[2].format = sg_vertex_format.SG_VERTEXFORMAT_UBYTE4N;
 
-            pipeLineDesc.Shader = _state.Shd;
-            pipeLineDesc.IndexType = Gfx.IndexType.Uint16;
-            pipeLineDesc.SampleCount = _state.Desc.SampleCount;
-            pipeLineDesc.Depth.PixelFormat = _state.Desc.DepthFormat;
-            pipeLineDesc.Colors[0].PixelFormat = _state.Desc.ColorFormat;
-            pipeLineDesc.Colors[0].Blend.Enabled = true;
-            pipeLineDesc.Colors[0].Blend.SrcFactorRgb = Gfx.BlendFactor.SrcAlpha;
-            pipeLineDesc.Colors[0].Blend.DstFactorRgb = Gfx.BlendFactor.OneMinusSrcAlpha;
-            pipeLineDesc.Colors[0].WriteMask = Gfx.ColorMask.Rgb;
-            _state.Pip = Gfx.MakePipeline(pipeLineDesc);
+            pipeLineDesc.shader = _state.Shd;
+            pipeLineDesc.index_type = sg_index_type.SG_INDEXTYPE_UINT16;
+            pipeLineDesc.sample_count = _state.Desc.SampleCount;
+            pipeLineDesc.depth.pixel_format = _state.Desc.DepthFormat;
+            pipeLineDesc.colors[0].pixel_format = _state.Desc.ColorFormat;
+            pipeLineDesc.colors[0].blend.enabled = true;
+            pipeLineDesc.colors[0].blend.src_factor_rgb = sg_blend_factor.SG_BLENDFACTOR_SRC_ALPHA;
+            pipeLineDesc.colors[0].blend.dst_factor_rgb = sg_blend_factor.SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+            pipeLineDesc.colors[0].write_mask = sg_color_mask.SG_COLORMASK_RGB;
+            _state.Pip = sg_make_pipeline(&pipeLineDesc);
         }
       
         private void InternalShutdown()
         {
-            ImGui.igDestroyContext(_context);
+            igDestroyContext(_context);
         }
 
         private void InternalHandleEvent(SDL.SDL_Event* ev)
         {
-            var io = ImGui.igGetIO();
+            var io = igGetIO();
 
             switch (ev->type)
             {
@@ -273,12 +274,12 @@ namespace noname
                     if (mouseButton == -1)
                         break;
 
-                    ImGui.ImGuiIO_AddMouseButtonEvent(io, mouseButton, ev->type == SDL.SDL_EventType.SDL_MOUSEBUTTONDOWN);
+                    ImGuiIO_AddMouseButtonEvent(io, mouseButton, ev->type == SDL.SDL_EventType.SDL_MOUSEBUTTONDOWN);
 
                     break;
                 case SDL.SDL_EventType.SDL_MOUSEWHEEL:
 
-                    ImGui.ImGuiIO_AddMouseWheelEvent
+                    ImGuiIO_AddMouseWheelEvent
                     (
                         io,
                         (ev->wheel.x > 0) ? 1.0f : (ev->wheel.x < 0) ? -1.0f : 0.0f, 
@@ -289,7 +290,7 @@ namespace noname
 
                 case SDL.SDL_EventType.SDL_MOUSEMOTION:
 
-                    ImGui.ImGuiIO_AddMousePosEvent(io, ev->motion.x, ev->motion.y);
+                    ImGuiIO_AddMousePosEvent(io, ev->motion.x, ev->motion.y);
 
                     break;
 
@@ -299,14 +300,14 @@ namespace noname
                     var modState = ev->key.keysym.mod;
                     var key = ImGui_ImplSDL2_KeycodeToImGuiKey(ev->key.keysym.sym);
 
-                    ImGui.ImGuiIO_AddKeyEvent(io, key, ev->type == SDL.SDL_EventType.SDL_KEYDOWN);
+                    ImGuiIO_AddKeyEvent(io, key, ev->type == SDL.SDL_EventType.SDL_KEYDOWN);
                    
-                    ImGui.ImGuiIO_AddKeyEvent(io, ImGui.ImGuiKey_ModShift, (modState & SDL.SDL_Keymod.KMOD_SHIFT) != 0);
-                    ImGui.ImGuiIO_AddKeyEvent(io, ImGui.ImGuiKey_ModCtrl, (modState & SDL.SDL_Keymod.KMOD_CTRL) != 0);
-                    ImGui.ImGuiIO_AddKeyEvent(io, ImGui.ImGuiKey_ModAlt, (modState & SDL.SDL_Keymod.KMOD_ALT) != 0);
-                    ImGui.ImGuiIO_AddKeyEvent(io, ImGui.ImGuiKey_ModSuper, (modState & SDL.SDL_Keymod.KMOD_GUI) != 0);
+                    ImGuiIO_AddKeyEvent(io, ImGuiKey_ModShift, (modState & SDL.SDL_Keymod.KMOD_SHIFT) != 0);
+                    ImGuiIO_AddKeyEvent(io, ImGuiKey_ModCtrl, (modState & SDL.SDL_Keymod.KMOD_CTRL) != 0);
+                    ImGuiIO_AddKeyEvent(io, ImGuiKey_ModAlt, (modState & SDL.SDL_Keymod.KMOD_ALT) != 0);
+                    ImGuiIO_AddKeyEvent(io, ImGuiKey_ModSuper, (modState & SDL.SDL_Keymod.KMOD_GUI) != 0);
 
-                    ImGui.ImGuiIO_SetKeyEventNativeData
+                    ImGuiIO_SetKeyEventNativeData
                     (
                         io,
                         key,
@@ -318,7 +319,7 @@ namespace noname
                     break;
                 case SDL.SDL_EventType.SDL_TEXTINPUT:
 
-                    ImGui.ImGuiIO_AddInputCharactersUTF8(io, ev->text.text);
+                    ImGuiIO_AddInputCharactersUTF8(io, ev->text.text);
 
                     break;
 
@@ -327,13 +328,13 @@ namespace noname
                     switch (ev->window.windowEvent)
                     {
                         case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_LEAVE:
-                            ImGui.ImGuiIO_AddMousePosEvent(io, -ImGui.igGET_FLT_MAX(), -ImGui.igGET_FLT_MAX());
+                            ImGuiIO_AddMousePosEvent(io, -igGET_FLT_MAX(), -igGET_FLT_MAX());
                             break;
                         case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_FOCUS_GAINED:
-                            ImGui.ImGuiIO_AddFocusEvent(io, true);
+                            ImGuiIO_AddFocusEvent(io, true);
                             break;
                         case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_FOCUS_LOST:
-                            ImGui.ImGuiIO_AddFocusEvent(io, false);
+                            ImGuiIO_AddFocusEvent(io, false);
                             break;
                     }
 
@@ -344,8 +345,8 @@ namespace noname
         private void InternalNewFrame(in ImGuiFrameDesc desc)
         {
             _state.DpiScale = desc.DpiScale == 0 ? 1.0f : desc.DpiScale;
-            ref var io = ref Unsafe.AsRef<ImGui.ImGuiIO>(ImGui.igGetIO());
-            //ref var viewport = ref Unsafe.AsRef<ImGui.ImGuiViewport>(ImGui.igGetMainViewport());
+            ref var io = ref Unsafe.AsRef<ImGuiIO>(igGetIO());
+            //ref var viewport = ref Unsafe.AsRef<ImGuiViewport>(igGetMainViewport());
 
             SDL.SDL_GetWindowPosition(desc.Window, out var window_x, out var window_y);
             SDL.SDL_GetWindowSize(desc.Window, out var w, out var h);
@@ -381,7 +382,7 @@ namespace noname
                 y -= window_y;
             }
 
-            ImGui.ImGuiIO_AddMousePosEvent(ImGui.igGetIO(), x, y);
+            ImGuiIO_AddMousePosEvent(igGetIO(), x, y);
 
             bool isAppFocused;
 
@@ -395,32 +396,32 @@ namespace noname
                 isAppFocused = (wndFlags & SDL.SDL_WindowFlags.SDL_WINDOW_INPUT_FOCUS) != 0;
             }
 
-            SDL.SDL_CaptureMouse(isAppFocused && desc.GlobalMouseState && ImGui.igIsAnyMouseDown() ? SDL.SDL_bool.SDL_TRUE : SDL.SDL_bool.SDL_FALSE);
+            SDL.SDL_CaptureMouse(isAppFocused && desc.GlobalMouseState && igIsAnyMouseDown() ? SDL.SDL_bool.SDL_TRUE : SDL.SDL_bool.SDL_FALSE);
 
-            if ((io.ConfigFlags & ImGui.ImGuiConfigFlags_NoMouseCursorChange) == 0)
+            if ((io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange) == 0)
             {
-                var imguiCursor = ImGui.igGetMouseCursor();
+                var imguiCursor = igGetMouseCursor();
 
-                if (io.MouseDrawCursor || imguiCursor.Data == ImGui.ImGuiMouseCursor_None)
+                if (io.MouseDrawCursor || imguiCursor.Data == ImGuiMouseCursor_None)
                 {
                     SDL.SDL_ShowCursor(0);
                 }
                 else
                 {
-                    SDL.SDL_SetCursor(_cursors[imguiCursor] != IntPtr.Zero ? _cursors[imguiCursor] : _cursors[ImGui.ImGuiMouseCursor_Arrow]);
+                    SDL.SDL_SetCursor(_cursors[imguiCursor] != IntPtr.Zero ? _cursors[imguiCursor] : _cursors[ImGuiMouseCursor_Arrow]);
                     SDL.SDL_ShowCursor(1);
                 }
             }            
 
-            ImGui.igNewFrame();
+            igNewFrame();
         }
 
         private void InternalRender()
         {
-            ImGui.igRender();
+            igRender();
 
-            ref var data = ref Unsafe.AsRef<ImGui.ImDrawData>(ImGui.igGetDrawData());
-            ref var io = ref Unsafe.AsRef<ImGui.ImGuiIO>(ImGui.igGetIO());
+            ref var data = ref Unsafe.AsRef<ImDrawData>(igGetDrawData());
+            ref var io = ref Unsafe.AsRef<ImGuiIO>(igGetIO());
 
             if (data.CmdListsCount == 0)
             {
@@ -433,12 +434,12 @@ namespace noname
 
             for (int clIndex = 0; clIndex < data.CmdListsCount; clIndex++, cmdListCount++)
             {
-                ref var cl = ref Unsafe.AsRef<ImGui.ImDrawList>(data.CmdLists[clIndex]);
-                var vtxSize = cl.VtxBuffer.Size * sizeof(ImGui.ImDrawVert);
-                var idxSize = cl.IdxBuffer.Size * sizeof(ImGui.ImDrawIdx);
+                ref var cl = ref Unsafe.AsRef<ImDrawList>(data.CmdLists[clIndex]);
+                var vtxSize = cl.VtxBuffer.Size * sizeof(ImDrawVert);
+                var idxSize = cl.IdxBuffer.Size * sizeof(ImDrawIdx);
 
-                if (allVtxSize + vtxSize > (int) _state.Vertices.Size ||
-                    allIdxSize + idxSize > (int) _state.Indices.Size)
+                if (allVtxSize + vtxSize > (int) _state.Vertices.size ||
+                    allIdxSize + idxSize > (int) _state.Indices.size)
                 {
                     break;
                 }
@@ -446,14 +447,14 @@ namespace noname
                 if (vtxSize > 0)
                 {
                     ref var srcVtxPtr = ref cl.VtxBuffer.Data;
-                    var dstVtxPtr = ((byte*)_state.Vertices.Ptr) + allVtxSize;
+                    var dstVtxPtr = ((byte*)_state.Vertices.ptr) + allVtxSize;
                     new Span<byte>(srcVtxPtr, vtxSize).CopyTo(new Span<byte>(dstVtxPtr, vtxSize));
                 }
 
                 if (idxSize > 0)
                 {
                     ref var srcIdxPtr = ref cl.IdxBuffer.Data;
-                    var dstIdxPtr = ((byte*)_state.Indices.Ptr) + allIdxSize;
+                    var dstIdxPtr = ((byte*)_state.Indices.ptr) + allIdxSize;
                     new Span<byte>(srcIdxPtr, idxSize).CopyTo(new Span<byte>(dstIdxPtr, idxSize));
                 }
 
@@ -469,15 +470,15 @@ namespace noname
             if (allVtxSize > 0)
             {
                 var vtxData = _state.Vertices;
-                vtxData.Size = (nuint) allVtxSize;
-                Gfx.UpdateBuffer(_state.VBuf, vtxData);
+                vtxData.size = (nuint) allVtxSize;
+                sg_update_buffer(_state.VBuf, &vtxData);
             }
 
             if (allIdxSize > 0)
             {
                 var idxData = _state.Indices;
-                idxData.Size = (nuint)allIdxSize;
-                Gfx.UpdateBuffer(_state.IBuf, idxData);
+                idxData.size = (nuint)allIdxSize;
+                sg_update_buffer(_state.IBuf, &idxData);
             }
 
 
@@ -485,32 +486,33 @@ namespace noname
             var fbWidth = (int) (io.DisplaySize.X * dpiScale);
             var fbHeight = (int) (io.DisplaySize.Y * dpiScale);
 
-            Gfx.ApplyViewport(0, 0, fbWidth, fbHeight, true);
-            Gfx.ApplyScissorRect(0, 0, fbWidth, fbHeight, true);
-            Gfx.ApplyPipeline(_state.Pip);
+            sg_apply_viewport(0, 0, fbWidth, fbHeight, true);
+            sg_apply_scissor_rect(0, 0, fbWidth, fbHeight, true);
+            sg_apply_pipeline(_state.Pip);
 
           
             ImGuiVsParam vsParam = new ImGuiVsParam();
             vsParam.DispSize.X = io.DisplaySize.X;
             vsParam.DispSize.Y = io.DisplaySize.Y;
 
-            Gfx.ApplyUniforms(Gfx.ShaderStage.Vs, 0, new Gfx.Range() { Ptr = Unsafe.AsPointer(ref vsParam), Size = (nuint) sizeof(ImGuiVsParam) });
+            var range = new sg_range { ptr = Unsafe.AsPointer(ref vsParam), size = (nuint)sizeof(ImGuiVsParam) };
+            sg_apply_uniforms(sg_shader_stage.SG_SHADERSTAGE_VS, 0, &range);
 
-            var bind = new Gfx.Bindings();
-            bind.VertexBuffers[0] = _state.VBuf;
-            bind.IndexBuffer = _state.IBuf;
+            var bind = new sg_bindings();
+            bind.vertex_buffers[0] = _state.VBuf;
+            bind.index_buffer = _state.IBuf;
             var texID = io.Fonts->TexID;
-            bind.FsImages[0].Id = (uint) (void*) texID;
+            bind.fs_images[0].id = (uint) (void*) texID;
             
             int vbOffset = 0;
             int ibOffset = 0;
             for (int clIndex = 0; clIndex < cmdListCount; ++clIndex)
             {
-                ref var cl = ref Unsafe.AsRef<ImGui.ImDrawList>(data.CmdLists[clIndex]);
-                bind.VertexBufferOffsets[0] = vbOffset;
-                bind.IndexBufferOffset = ibOffset;
+                ref var cl = ref Unsafe.AsRef<ImDrawList>(data.CmdLists[clIndex]);
+                bind.vertex_buffer_offsets[0] = vbOffset;
+                bind.index_buffer_offset = ibOffset;
 
-                Gfx.ApplyBindings(bind);
+                sg_apply_bindings(&bind);
 
                 int numCmds = cl.CmdBuffer.Size;
                 uint vtxOffset = 0;
@@ -523,12 +525,12 @@ namespace noname
                     {
                         texID = pcmd.TextureId;
                         vtxOffset = pcmd.VtxOffset;
-                        bind.FsImages[0].Id = (uint)(void*)texID;
-                        bind.VertexBufferOffsets[0] = vbOffset + (int)(pcmd.VtxOffset * sizeof(ImGui.ImDrawVert));
-                        Gfx.ApplyBindings(bind);
+                        bind.fs_images[0].id = (uint)(void*)texID;
+                        bind.vertex_buffer_offsets[0] = vbOffset + (int)(pcmd.VtxOffset * sizeof(ImDrawVert));
+                        sg_apply_bindings(&bind);
                     }
 
-                    Gfx.ApplyScissorRect
+                    sg_apply_scissor_rect
                     (
                         (int)(pcmd.ClipRect.X * dpiScale),
                         (int)(pcmd.ClipRect.Y * dpiScale),
@@ -537,141 +539,141 @@ namespace noname
                         true
                     );
 
-                    Gfx.Draw(pcmd.IdxOffset, pcmd.ElemCount, 1);
+                    sg_draw((int) pcmd.IdxOffset, (int) pcmd.ElemCount, 1);
                 }
 
-                var vtxSize = cl.VtxBuffer.Size * sizeof(ImGui.ImDrawVert);
-                var idxSize = cl.IdxBuffer.Size * sizeof(ImGui.ImDrawIdx);
+                var vtxSize = cl.VtxBuffer.Size * sizeof(ImDrawVert);
+                var idxSize = cl.IdxBuffer.Size * sizeof(ImDrawIdx);
                 vbOffset += vtxSize;
                 ibOffset += idxSize;
             }
 
-            Gfx.ApplyViewport(0, 0, fbWidth, fbHeight, true);
-            Gfx.ApplyViewport(0, 0, fbWidth, fbHeight, true);
+            sg_apply_viewport(0, 0, fbWidth, fbHeight, true);
+            sg_apply_scissor_rect(0, 0, fbWidth, fbHeight, true);
         }
 
 
-        private static ImGui.ImGuiKey ImGui_ImplSDL2_KeycodeToImGuiKey(SDL.SDL_Keycode keycode)
+        private static ImGuiKey ImGui_ImplSDL2_KeycodeToImGuiKey(SDL.SDL_Keycode keycode)
         {
             switch (keycode)
             {
-                case SDL.SDL_Keycode.SDLK_TAB: return ImGui.ImGuiKey_Tab;
-                case SDL.SDL_Keycode.SDLK_LEFT: return ImGui.ImGuiKey_LeftArrow;
-                case SDL.SDL_Keycode.SDLK_RIGHT: return ImGui.ImGuiKey_RightArrow;
-                case SDL.SDL_Keycode.SDLK_UP: return ImGui.ImGuiKey_UpArrow;
-                case SDL.SDL_Keycode.SDLK_DOWN: return ImGui.ImGuiKey_DownArrow;
-                case SDL.SDL_Keycode.SDLK_PAGEUP: return ImGui.ImGuiKey_PageUp;
-                case SDL.SDL_Keycode.SDLK_PAGEDOWN: return ImGui.ImGuiKey_PageDown;
-                case SDL.SDL_Keycode.SDLK_HOME: return ImGui.ImGuiKey_Home;
-                case SDL.SDL_Keycode.SDLK_END: return ImGui.ImGuiKey_End;
-                case SDL.SDL_Keycode.SDLK_INSERT: return ImGui.ImGuiKey_Insert;
-                case SDL.SDL_Keycode.SDLK_DELETE: return ImGui.ImGuiKey_Delete;
-                case SDL.SDL_Keycode.SDLK_BACKSPACE: return ImGui.ImGuiKey_Backspace;
-                case SDL.SDL_Keycode.SDLK_SPACE: return ImGui.ImGuiKey_Space;
-                case SDL.SDL_Keycode.SDLK_RETURN: return ImGui.ImGuiKey_Enter;
-                case SDL.SDL_Keycode.SDLK_ESCAPE: return ImGui.ImGuiKey_Escape;
-                case SDL.SDL_Keycode.SDLK_QUOTE: return ImGui.ImGuiKey_Apostrophe;
-                case SDL.SDL_Keycode.SDLK_COMMA: return ImGui.ImGuiKey_Comma;
-                case SDL.SDL_Keycode.SDLK_MINUS: return ImGui.ImGuiKey_Minus;
-                case SDL.SDL_Keycode.SDLK_PERIOD: return ImGui.ImGuiKey_Period;
-                case SDL.SDL_Keycode.SDLK_SLASH: return ImGui.ImGuiKey_Slash;
-                case SDL.SDL_Keycode.SDLK_SEMICOLON: return ImGui.ImGuiKey_Semicolon;
-                case SDL.SDL_Keycode.SDLK_EQUALS: return ImGui.ImGuiKey_Equal;
-                case SDL.SDL_Keycode.SDLK_LEFTBRACKET: return ImGui.ImGuiKey_LeftBracket;
-                case SDL.SDL_Keycode.SDLK_BACKSLASH: return ImGui.ImGuiKey_Backslash;
-                case SDL.SDL_Keycode.SDLK_RIGHTBRACKET: return ImGui.ImGuiKey_RightBracket;
-                case SDL.SDL_Keycode.SDLK_BACKQUOTE: return ImGui.ImGuiKey_GraveAccent;
-                case SDL.SDL_Keycode.SDLK_CAPSLOCK: return ImGui.ImGuiKey_CapsLock;
-                case SDL.SDL_Keycode.SDLK_SCROLLLOCK: return ImGui.ImGuiKey_ScrollLock;
-                case SDL.SDL_Keycode.SDLK_NUMLOCKCLEAR: return ImGui.ImGuiKey_NumLock;
-                case SDL.SDL_Keycode.SDLK_PRINTSCREEN: return ImGui.ImGuiKey_PrintScreen;
-                case SDL.SDL_Keycode.SDLK_PAUSE: return ImGui.ImGuiKey_Pause;
-                case SDL.SDL_Keycode.SDLK_KP_0: return ImGui.ImGuiKey_Keypad0;
-                case SDL.SDL_Keycode.SDLK_KP_1: return ImGui.ImGuiKey_Keypad1;
-                case SDL.SDL_Keycode.SDLK_KP_2: return ImGui.ImGuiKey_Keypad2;
-                case SDL.SDL_Keycode.SDLK_KP_3: return ImGui.ImGuiKey_Keypad3;
-                case SDL.SDL_Keycode.SDLK_KP_4: return ImGui.ImGuiKey_Keypad4;
-                case SDL.SDL_Keycode.SDLK_KP_5: return ImGui.ImGuiKey_Keypad5;
-                case SDL.SDL_Keycode.SDLK_KP_6: return ImGui.ImGuiKey_Keypad6;
-                case SDL.SDL_Keycode.SDLK_KP_7: return ImGui.ImGuiKey_Keypad7;
-                case SDL.SDL_Keycode.SDLK_KP_8: return ImGui.ImGuiKey_Keypad8;
-                case SDL.SDL_Keycode.SDLK_KP_9: return ImGui.ImGuiKey_Keypad9;
-                case SDL.SDL_Keycode.SDLK_KP_PERIOD: return ImGui.ImGuiKey_KeypadDecimal;
-                case SDL.SDL_Keycode.SDLK_KP_DIVIDE: return ImGui.ImGuiKey_KeypadDivide;
-                case SDL.SDL_Keycode.SDLK_KP_MULTIPLY: return ImGui.ImGuiKey_KeypadMultiply;
-                case SDL.SDL_Keycode.SDLK_KP_MINUS: return ImGui.ImGuiKey_KeypadSubtract;
-                case SDL.SDL_Keycode.SDLK_KP_PLUS: return ImGui.ImGuiKey_KeypadAdd;
-                case SDL.SDL_Keycode.SDLK_KP_ENTER: return ImGui.ImGuiKey_KeypadEnter;
-                case SDL.SDL_Keycode.SDLK_KP_EQUALS: return ImGui.ImGuiKey_KeypadEqual;
-                case SDL.SDL_Keycode.SDLK_LCTRL: return ImGui.ImGuiKey_LeftCtrl;
-                case SDL.SDL_Keycode.SDLK_LSHIFT: return ImGui.ImGuiKey_LeftShift;
-                case SDL.SDL_Keycode.SDLK_LALT: return ImGui.ImGuiKey_LeftAlt;
-                case SDL.SDL_Keycode.SDLK_LGUI: return ImGui.ImGuiKey_LeftSuper;
-                case SDL.SDL_Keycode.SDLK_RCTRL: return ImGui.ImGuiKey_RightCtrl;
-                case SDL.SDL_Keycode.SDLK_RSHIFT: return ImGui.ImGuiKey_RightShift;
-                case SDL.SDL_Keycode.SDLK_RALT: return ImGui.ImGuiKey_RightAlt;
-                case SDL.SDL_Keycode.SDLK_RGUI: return ImGui.ImGuiKey_RightSuper;
-                case SDL.SDL_Keycode.SDLK_APPLICATION: return ImGui.ImGuiKey_Menu;
-                case SDL.SDL_Keycode.SDLK_0: return ImGui.ImGuiKey_0;
-                case SDL.SDL_Keycode.SDLK_1: return ImGui.ImGuiKey_1;
-                case SDL.SDL_Keycode.SDLK_2: return ImGui.ImGuiKey_2;
-                case SDL.SDL_Keycode.SDLK_3: return ImGui.ImGuiKey_3;
-                case SDL.SDL_Keycode.SDLK_4: return ImGui.ImGuiKey_4;
-                case SDL.SDL_Keycode.SDLK_5: return ImGui.ImGuiKey_5;
-                case SDL.SDL_Keycode.SDLK_6: return ImGui.ImGuiKey_6;
-                case SDL.SDL_Keycode.SDLK_7: return ImGui.ImGuiKey_7;
-                case SDL.SDL_Keycode.SDLK_8: return ImGui.ImGuiKey_8;
-                case SDL.SDL_Keycode.SDLK_9: return ImGui.ImGuiKey_9;
-                case SDL.SDL_Keycode.SDLK_a: return ImGui.ImGuiKey_A;
-                case SDL.SDL_Keycode.SDLK_b: return ImGui.ImGuiKey_B;
-                case SDL.SDL_Keycode.SDLK_c: return ImGui.ImGuiKey_C;
-                case SDL.SDL_Keycode.SDLK_d: return ImGui.ImGuiKey_D;
-                case SDL.SDL_Keycode.SDLK_e: return ImGui.ImGuiKey_E;
-                case SDL.SDL_Keycode.SDLK_f: return ImGui.ImGuiKey_F;
-                case SDL.SDL_Keycode.SDLK_g: return ImGui.ImGuiKey_G;
-                case SDL.SDL_Keycode.SDLK_h: return ImGui.ImGuiKey_H;
-                case SDL.SDL_Keycode.SDLK_i: return ImGui.ImGuiKey_I;
-                case SDL.SDL_Keycode.SDLK_j: return ImGui.ImGuiKey_J;
-                case SDL.SDL_Keycode.SDLK_k: return ImGui.ImGuiKey_K;
-                case SDL.SDL_Keycode.SDLK_l: return ImGui.ImGuiKey_L;
-                case SDL.SDL_Keycode.SDLK_m: return ImGui.ImGuiKey_M;
-                case SDL.SDL_Keycode.SDLK_n: return ImGui.ImGuiKey_N;
-                case SDL.SDL_Keycode.SDLK_o: return ImGui.ImGuiKey_O;
-                case SDL.SDL_Keycode.SDLK_p: return ImGui.ImGuiKey_P;
-                case SDL.SDL_Keycode.SDLK_q: return ImGui.ImGuiKey_Q;
-                case SDL.SDL_Keycode.SDLK_r: return ImGui.ImGuiKey_R;
-                case SDL.SDL_Keycode.SDLK_s: return ImGui.ImGuiKey_S;
-                case SDL.SDL_Keycode.SDLK_t: return ImGui.ImGuiKey_T;
-                case SDL.SDL_Keycode.SDLK_u: return ImGui.ImGuiKey_U;
-                case SDL.SDL_Keycode.SDLK_v: return ImGui.ImGuiKey_V;
-                case SDL.SDL_Keycode.SDLK_w: return ImGui.ImGuiKey_W;
-                case SDL.SDL_Keycode.SDLK_x: return ImGui.ImGuiKey_X;
-                case SDL.SDL_Keycode.SDLK_y: return ImGui.ImGuiKey_Y;
-                case SDL.SDL_Keycode.SDLK_z: return ImGui.ImGuiKey_Z;
-                case SDL.SDL_Keycode.SDLK_F1: return ImGui.ImGuiKey_F1;
-                case SDL.SDL_Keycode.SDLK_F2: return ImGui.ImGuiKey_F2;
-                case SDL.SDL_Keycode.SDLK_F3: return ImGui.ImGuiKey_F3;
-                case SDL.SDL_Keycode.SDLK_F4: return ImGui.ImGuiKey_F4;
-                case SDL.SDL_Keycode.SDLK_F5: return ImGui.ImGuiKey_F5;
-                case SDL.SDL_Keycode.SDLK_F6: return ImGui.ImGuiKey_F6;
-                case SDL.SDL_Keycode.SDLK_F7: return ImGui.ImGuiKey_F7;
-                case SDL.SDL_Keycode.SDLK_F8: return ImGui.ImGuiKey_F8;
-                case SDL.SDL_Keycode.SDLK_F9: return ImGui.ImGuiKey_F9;
-                case SDL.SDL_Keycode.SDLK_F10: return ImGui.ImGuiKey_F10;
-                case SDL.SDL_Keycode.SDLK_F11: return ImGui.ImGuiKey_F11;
-                case SDL.SDL_Keycode.SDLK_F12: return ImGui.ImGuiKey_F12;
+                case SDL.SDL_Keycode.SDLK_TAB: return ImGuiKey_Tab;
+                case SDL.SDL_Keycode.SDLK_LEFT: return ImGuiKey_LeftArrow;
+                case SDL.SDL_Keycode.SDLK_RIGHT: return ImGuiKey_RightArrow;
+                case SDL.SDL_Keycode.SDLK_UP: return ImGuiKey_UpArrow;
+                case SDL.SDL_Keycode.SDLK_DOWN: return ImGuiKey_DownArrow;
+                case SDL.SDL_Keycode.SDLK_PAGEUP: return ImGuiKey_PageUp;
+                case SDL.SDL_Keycode.SDLK_PAGEDOWN: return ImGuiKey_PageDown;
+                case SDL.SDL_Keycode.SDLK_HOME: return ImGuiKey_Home;
+                case SDL.SDL_Keycode.SDLK_END: return ImGuiKey_End;
+                case SDL.SDL_Keycode.SDLK_INSERT: return ImGuiKey_Insert;
+                case SDL.SDL_Keycode.SDLK_DELETE: return ImGuiKey_Delete;
+                case SDL.SDL_Keycode.SDLK_BACKSPACE: return ImGuiKey_Backspace;
+                case SDL.SDL_Keycode.SDLK_SPACE: return ImGuiKey_Space;
+                case SDL.SDL_Keycode.SDLK_RETURN: return ImGuiKey_Enter;
+                case SDL.SDL_Keycode.SDLK_ESCAPE: return ImGuiKey_Escape;
+                case SDL.SDL_Keycode.SDLK_QUOTE: return ImGuiKey_Apostrophe;
+                case SDL.SDL_Keycode.SDLK_COMMA: return ImGuiKey_Comma;
+                case SDL.SDL_Keycode.SDLK_MINUS: return ImGuiKey_Minus;
+                case SDL.SDL_Keycode.SDLK_PERIOD: return ImGuiKey_Period;
+                case SDL.SDL_Keycode.SDLK_SLASH: return ImGuiKey_Slash;
+                case SDL.SDL_Keycode.SDLK_SEMICOLON: return ImGuiKey_Semicolon;
+                case SDL.SDL_Keycode.SDLK_EQUALS: return ImGuiKey_Equal;
+                case SDL.SDL_Keycode.SDLK_LEFTBRACKET: return ImGuiKey_LeftBracket;
+                case SDL.SDL_Keycode.SDLK_BACKSLASH: return ImGuiKey_Backslash;
+                case SDL.SDL_Keycode.SDLK_RIGHTBRACKET: return ImGuiKey_RightBracket;
+                case SDL.SDL_Keycode.SDLK_BACKQUOTE: return ImGuiKey_GraveAccent;
+                case SDL.SDL_Keycode.SDLK_CAPSLOCK: return ImGuiKey_CapsLock;
+                case SDL.SDL_Keycode.SDLK_SCROLLLOCK: return ImGuiKey_ScrollLock;
+                case SDL.SDL_Keycode.SDLK_NUMLOCKCLEAR: return ImGuiKey_NumLock;
+                case SDL.SDL_Keycode.SDLK_PRINTSCREEN: return ImGuiKey_PrintScreen;
+                case SDL.SDL_Keycode.SDLK_PAUSE: return ImGuiKey_Pause;
+                case SDL.SDL_Keycode.SDLK_KP_0: return ImGuiKey_Keypad0;
+                case SDL.SDL_Keycode.SDLK_KP_1: return ImGuiKey_Keypad1;
+                case SDL.SDL_Keycode.SDLK_KP_2: return ImGuiKey_Keypad2;
+                case SDL.SDL_Keycode.SDLK_KP_3: return ImGuiKey_Keypad3;
+                case SDL.SDL_Keycode.SDLK_KP_4: return ImGuiKey_Keypad4;
+                case SDL.SDL_Keycode.SDLK_KP_5: return ImGuiKey_Keypad5;
+                case SDL.SDL_Keycode.SDLK_KP_6: return ImGuiKey_Keypad6;
+                case SDL.SDL_Keycode.SDLK_KP_7: return ImGuiKey_Keypad7;
+                case SDL.SDL_Keycode.SDLK_KP_8: return ImGuiKey_Keypad8;
+                case SDL.SDL_Keycode.SDLK_KP_9: return ImGuiKey_Keypad9;
+                case SDL.SDL_Keycode.SDLK_KP_PERIOD: return ImGuiKey_KeypadDecimal;
+                case SDL.SDL_Keycode.SDLK_KP_DIVIDE: return ImGuiKey_KeypadDivide;
+                case SDL.SDL_Keycode.SDLK_KP_MULTIPLY: return ImGuiKey_KeypadMultiply;
+                case SDL.SDL_Keycode.SDLK_KP_MINUS: return ImGuiKey_KeypadSubtract;
+                case SDL.SDL_Keycode.SDLK_KP_PLUS: return ImGuiKey_KeypadAdd;
+                case SDL.SDL_Keycode.SDLK_KP_ENTER: return ImGuiKey_KeypadEnter;
+                case SDL.SDL_Keycode.SDLK_KP_EQUALS: return ImGuiKey_KeypadEqual;
+                case SDL.SDL_Keycode.SDLK_LCTRL: return ImGuiKey_LeftCtrl;
+                case SDL.SDL_Keycode.SDLK_LSHIFT: return ImGuiKey_LeftShift;
+                case SDL.SDL_Keycode.SDLK_LALT: return ImGuiKey_LeftAlt;
+                case SDL.SDL_Keycode.SDLK_LGUI: return ImGuiKey_LeftSuper;
+                case SDL.SDL_Keycode.SDLK_RCTRL: return ImGuiKey_RightCtrl;
+                case SDL.SDL_Keycode.SDLK_RSHIFT: return ImGuiKey_RightShift;
+                case SDL.SDL_Keycode.SDLK_RALT: return ImGuiKey_RightAlt;
+                case SDL.SDL_Keycode.SDLK_RGUI: return ImGuiKey_RightSuper;
+                case SDL.SDL_Keycode.SDLK_APPLICATION: return ImGuiKey_Menu;
+                case SDL.SDL_Keycode.SDLK_0: return ImGuiKey_0;
+                case SDL.SDL_Keycode.SDLK_1: return ImGuiKey_1;
+                case SDL.SDL_Keycode.SDLK_2: return ImGuiKey_2;
+                case SDL.SDL_Keycode.SDLK_3: return ImGuiKey_3;
+                case SDL.SDL_Keycode.SDLK_4: return ImGuiKey_4;
+                case SDL.SDL_Keycode.SDLK_5: return ImGuiKey_5;
+                case SDL.SDL_Keycode.SDLK_6: return ImGuiKey_6;
+                case SDL.SDL_Keycode.SDLK_7: return ImGuiKey_7;
+                case SDL.SDL_Keycode.SDLK_8: return ImGuiKey_8;
+                case SDL.SDL_Keycode.SDLK_9: return ImGuiKey_9;
+                case SDL.SDL_Keycode.SDLK_a: return ImGuiKey_A;
+                case SDL.SDL_Keycode.SDLK_b: return ImGuiKey_B;
+                case SDL.SDL_Keycode.SDLK_c: return ImGuiKey_C;
+                case SDL.SDL_Keycode.SDLK_d: return ImGuiKey_D;
+                case SDL.SDL_Keycode.SDLK_e: return ImGuiKey_E;
+                case SDL.SDL_Keycode.SDLK_f: return ImGuiKey_F;
+                case SDL.SDL_Keycode.SDLK_g: return ImGuiKey_G;
+                case SDL.SDL_Keycode.SDLK_h: return ImGuiKey_H;
+                case SDL.SDL_Keycode.SDLK_i: return ImGuiKey_I;
+                case SDL.SDL_Keycode.SDLK_j: return ImGuiKey_J;
+                case SDL.SDL_Keycode.SDLK_k: return ImGuiKey_K;
+                case SDL.SDL_Keycode.SDLK_l: return ImGuiKey_L;
+                case SDL.SDL_Keycode.SDLK_m: return ImGuiKey_M;
+                case SDL.SDL_Keycode.SDLK_n: return ImGuiKey_N;
+                case SDL.SDL_Keycode.SDLK_o: return ImGuiKey_O;
+                case SDL.SDL_Keycode.SDLK_p: return ImGuiKey_P;
+                case SDL.SDL_Keycode.SDLK_q: return ImGuiKey_Q;
+                case SDL.SDL_Keycode.SDLK_r: return ImGuiKey_R;
+                case SDL.SDL_Keycode.SDLK_s: return ImGuiKey_S;
+                case SDL.SDL_Keycode.SDLK_t: return ImGuiKey_T;
+                case SDL.SDL_Keycode.SDLK_u: return ImGuiKey_U;
+                case SDL.SDL_Keycode.SDLK_v: return ImGuiKey_V;
+                case SDL.SDL_Keycode.SDLK_w: return ImGuiKey_W;
+                case SDL.SDL_Keycode.SDLK_x: return ImGuiKey_X;
+                case SDL.SDL_Keycode.SDLK_y: return ImGuiKey_Y;
+                case SDL.SDL_Keycode.SDLK_z: return ImGuiKey_Z;
+                case SDL.SDL_Keycode.SDLK_F1: return ImGuiKey_F1;
+                case SDL.SDL_Keycode.SDLK_F2: return ImGuiKey_F2;
+                case SDL.SDL_Keycode.SDLK_F3: return ImGuiKey_F3;
+                case SDL.SDL_Keycode.SDLK_F4: return ImGuiKey_F4;
+                case SDL.SDL_Keycode.SDLK_F5: return ImGuiKey_F5;
+                case SDL.SDL_Keycode.SDLK_F6: return ImGuiKey_F6;
+                case SDL.SDL_Keycode.SDLK_F7: return ImGuiKey_F7;
+                case SDL.SDL_Keycode.SDLK_F8: return ImGuiKey_F8;
+                case SDL.SDL_Keycode.SDLK_F9: return ImGuiKey_F9;
+                case SDL.SDL_Keycode.SDLK_F10: return ImGuiKey_F10;
+                case SDL.SDL_Keycode.SDLK_F11: return ImGuiKey_F11;
+                case SDL.SDL_Keycode.SDLK_F12: return ImGuiKey_F12;
             }
-            return ImGui.ImGuiKey_None;
+            return ImGuiKey_None;
         }
 
         [UnmanagedCallersOnly]
-        private static ImGui.Runtime.CString GetClipboardText(void* data)
+        private static bottlenoselabs.imgui.Runtime.CString GetClipboardText(void* data)
         {
             return SDL.SDL_GetClipboardText();
         }
 
         [UnmanagedCallersOnly]
-        private static void SetClipboardText(void* data, ImGui.Runtime.CString str)
+        private static void SetClipboardText(void* data, bottlenoselabs.imgui.Runtime.CString str)
         {
             SDL.SDL_SetClipboardText(str.ToString());
         }

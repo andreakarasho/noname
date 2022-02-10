@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using System.Threading;
-using bottlenoselabs;
 using SDL2;
-using Sokol;
 using noname;
+
+using static bottlenoselabs.sokol;
+using static bottlenoselabs.imgui;
+using System.Runtime.CompilerServices;
 
 unsafe
 {    
@@ -24,13 +26,15 @@ unsafe
     [UnmanagedCallersOnly]
     static void OnInit(void* userdata)
     {
-        Gfx.Setup(new Gfx.Desc()
+        var desc = new sg_desc()
         {
-            Context = Backend.GetContext()
-        });
+            context = Backend.GetContext()
+        };
+
+        sg_setup(&desc);
 
         /* a vertex buffer with 3 vertices */
-        ReadOnlySpan<float> vertices = stackalloc float[]
+        Span<float> vertices = stackalloc float[]
         {
             // positions            // colors
             0.0f,
@@ -56,26 +60,21 @@ unsafe
             1.0f
         };
 
-        State.Bindings.VertexBuffers[0] = Gfx.MakeBuffer(
-            vertices,
-            "triangle-vertices");
+        var bufferDesc = new sg_buffer_desc();
+        bufferDesc.data = new sg_range() { ptr = Unsafe.AsPointer(ref vertices[0]), size = (nuint)(sizeof(float) * vertices.Length) };
+        State.Bindings.vertex_buffers[0] = sg_make_buffer(&bufferDesc);
 
-        Gfx.Shader shd = Gfx.MakeShader(GetShaderDesc());
-        Gfx.PipelineDesc pipelineDesc = new()
+        var shaderDesc = GetShaderDesc();
+        var shd = sg_make_shader(&shaderDesc);
+        var pipelineDesc = new sg_pipeline_desc()
         {
-            Shader = shd,
-            Label = "triangle-pipeline",
+            shader = shd,
+            label = "triangle-pipeline",
         };
-        pipelineDesc.Layout.Attrs[0].Format = Gfx.VertexFormat.Float3;
-        pipelineDesc.Layout.Attrs[1].Format = Gfx.VertexFormat.Float4;
-        State.Pipeline = Gfx.MakePipeline(pipelineDesc);
+        pipelineDesc.layout.attrs[0].format = sg_vertex_format.SG_VERTEXFORMAT_FLOAT3;
+        pipelineDesc.layout.attrs[1].format = sg_vertex_format.SG_VERTEXFORMAT_FLOAT4;
+        State.Pipeline = sg_make_pipeline(&pipelineDesc);
 
-
-
-        var dbgText = new DebugText.Desc();
-        ref var d = ref dbgText.Fonts[0];
-        d = DebugText.FontC64();
-        DebugText.Setup(dbgText);
 
 
         ImGuiRenderer.Setup(default);
@@ -100,25 +99,22 @@ unsafe
         });
 
 
-        ImGui.igShowDemoWindow(null);
+        igShowDemoWindow(null);
 
-        string text = "SOKOL + SDL TEST";
-        DebugText.Font(0);
-        DebugText.Canvas(Backend.Width, Backend.Height);
-        DebugText.Origin(0f, 0f);
-        DebugText.Pos((Backend.Width / 8f) * 0.5f, (Backend.Height / 8f) * 0.5f);
-        DebugText.Puts(text);
+        var action = default(sg_pass_action);
+        ref var colorAttachment = ref action.colors[0];
+        colorAttachment.action = sg_action.SG_ACTION_CLEAR;
+        colorAttachment.value = Rgba32F.Black;
 
-        Gfx.BeginDefaultPass(default, Backend.Width, Backend.Height);
-        Gfx.ApplyPipeline(State.Pipeline);
-        Gfx.ApplyBindings(State.Bindings);
-        Gfx.Draw(0, 3, 1);
+        sg_begin_default_pass(&action, Backend.Width, Backend.Height);
+        sg_apply_pipeline(State.Pipeline);
+        sg_apply_bindings((sg_bindings*) Unsafe.AsPointer(ref State.Bindings));
+        sg_draw(0, 3, 1);
 
-        DebugText.Draw();
         ImGuiRenderer.Render();
 
-        Gfx.EndPass();
-        Gfx.Commit();
+        sg_end_pass();
+        sg_commit();
 
         Thread.Sleep(1);
     }
@@ -129,15 +125,15 @@ unsafe
         ImGuiRenderer.HandleEvent(ev);
     }
 
-    static Gfx.ShaderDesc GetShaderDesc()
+    static sg_shader_desc GetShaderDesc()
     {
-        Gfx.ShaderDesc desc = default;
-        switch (Gfx.QueryBackend())
+        var desc = default(sg_shader_desc);
+        switch (sg_query_backend())
         {
-            case Gfx.Backend.D3d11:
-                desc.Attrs[0].SemName = "POS";
-                desc.Attrs[1].SemName = "COLOR";
-                desc.Vs.Source = @"
+            case sg_backend.SG_BACKEND_D3D11:
+                desc.attrs[0].sem_name = "POS";
+                desc.attrs[1].sem_name = "COLOR";
+                desc.vs.source = @"
                 struct vs_in {
                   float4 pos: POS;
                   float4 color: COLOR;
@@ -152,16 +148,16 @@ unsafe
                   outp.color = inp.color;
                   return outp;
                 }";
-                desc.Fs.Source = @"
+                desc.fs.source = @"
                 float4 main(float4 color: COLOR0): SV_Target0 {
                   return color;
                 }";
                 break;
-            case Gfx.Backend.Glcore33:
-                desc.Attrs[0].Name = "position";
-                desc.Attrs[1].Name = "color0";
-                desc.Vs.Source = @"
-# version 330
+            case sg_backend.SG_BACKEND_GLCORE33:
+                desc.attrs[0].name = "position";
+                desc.attrs[1].name = "color0";
+                desc.vs.source = @"
+                # version 330
                 in vec4 position;
                 in vec4 color0;
                 out vec4 color;
@@ -170,17 +166,17 @@ unsafe
                   color = color0;
                 }";
 
-                desc.Fs.Source = @"
-# version 330
+                desc.fs.source = @"
+                # version 330
                 in vec4 color;
                 out vec4 frag_color;
                 void main() {
                   frag_color = color;
                 }";
                 break;
-            case Gfx.Backend.MetalMacos:
-                desc.Vs.Source = @"
-# include <metal_stdlib>
+            case sg_backend.SG_BACKEND_METAL_MACOS:
+                desc.vs.source = @"
+                # include <metal_stdlib>
                 using namespace metal;
                 struct vs_in {
                   float4 position [[attribute(0)]];
@@ -196,7 +192,7 @@ unsafe
                   outp.color = inp.color;
                   return outp;
                 }";
-                desc.Fs.Source = @"
+                desc.fs.source = @"
 # include <metal_stdlib>
                 using namespace metal;
                 fragment float4 _main(float4 color [[stage_in]]) {
@@ -210,6 +206,6 @@ unsafe
 
 static class State
 {
-    public static Gfx.Pipeline Pipeline;
-    public static Gfx.Bindings Bindings;
+    public static sg_pipeline Pipeline;
+    public static sg_bindings Bindings;
 }

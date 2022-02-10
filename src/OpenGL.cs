@@ -1,11 +1,12 @@
 ﻿using SDL2;
-using Sokol;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+
+using static bottlenoselabs.sokol;
 
 namespace noname
 {
@@ -30,10 +31,10 @@ namespace noname
             return ctx;
         }
 
-        public static Gfx.ContextDesc GetContext()
+        public static sg_context_desc GetContext()
         {
-            var ctx = new Gfx.ContextDesc();
-            ctx.Gl.ForceGles2 = true;
+            var ctx = new sg_context_desc();
+            ctx.gl.force_gles2 = true;
 
             return ctx;
         }
