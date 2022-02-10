@@ -2,11 +2,12 @@
 using System.Runtime.InteropServices;
 using System.Threading;
 using SDL2;
+using System.Runtime.CompilerServices;
+
 using noname;
 
 using static bottlenoselabs.sokol;
 using static bottlenoselabs.imgui;
-using System.Runtime.CompilerServices;
 
 unsafe
 {    
@@ -102,9 +103,9 @@ unsafe
         igShowDemoWindow(null);
 
         var action = default(sg_pass_action);
-        ref var colorAttachment = ref action.colors[0];
-        colorAttachment.action = sg_action.SG_ACTION_CLEAR;
-        colorAttachment.value = Rgba32F.Black;
+        //ref var colorAttachment = ref action.colors[0];
+        //colorAttachment.action = sg_action.SG_ACTION_CLEAR;
+        //colorAttachment.value = Rgba32F.Black;
 
         sg_begin_default_pass(&action, Backend.Width, Backend.Height);
         sg_apply_pipeline(State.Pipeline);
