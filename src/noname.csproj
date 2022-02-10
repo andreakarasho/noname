@@ -7,10 +7,12 @@
 		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<PlatformTarget>x64</PlatformTarget>
-		<DefineConstants>$(DefineConstants);SOKOL_D3D11</DefineConstants>
+		<DefineConstants Condition=" '$(ExtraDefineConstants)' != '' ">$(DefineConstants);$(ExtraDefineConstants)</DefineConstants>
 	</PropertyGroup>
 
-	
+
+
+	<!-- START DEPENDENCIES-->
 	<ItemGroup>
 		<Compile Include="../external/SDL2-CS/src/SDL2.cs" />
 		<Compile Include="../external/imgui-cs/src/cs/production/imgui/imgui.cs" />
@@ -18,10 +20,11 @@
 		<Compile Include="../external/sokol-cs/src/cs/production/sokol/Rgba32F.cs" />
 		<Compile Include="../external/sokol-cs/src/cs/production/sokol/Rgba32F.Colors.cs" />
 	</ItemGroup>
+	<!-- END DEPENDENCIES-->
 
-	
-	<!-- START AOT -->
 
+
+	<!-- START AOT-->
 	<ItemGroup Condition="'$(AOT)' == 'true'">
 		<PackageReference Include="Microsoft.DotNet.ILCompiler" Version="7.0.0-*" />
 	</ItemGroup>
@@ -46,7 +49,6 @@
 		<NativeLibrary Include="sokol.a" Condition="!$(RuntimeIdentifier.StartsWith('win'))" />
 	</ItemGroup>
 	-->
-	
 	<!-- END AOT-->
 	
 </Project>
