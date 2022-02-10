@@ -14,11 +14,15 @@
 
 	<!-- START DEPENDENCIES-->
 	<ItemGroup>
-		<Compile Include="../external/SDL2-CS/src/SDL2.cs" />
-		<Compile Include="../external/imgui-cs/src/cs/production/imgui/imgui.cs" />
-		<Compile Include="../external/sokol-cs/src/cs/production/sokol/sokol.cs" />
-		<Compile Include="../external/sokol-cs/src/cs/production/sokol/Rgba32F.cs" />
-		<Compile Include="../external/sokol-cs/src/cs/production/sokol/Rgba32F.Colors.cs" />
+		<Folder Include="SDL2\" />
+		<Folder Include="Sokol\" />
+		<Folder Include="SDL2\" />
+		
+		<Compile Include="../external/SDL2-CS/src/SDL2.cs" Link="SDL2\SDL2.cs" />
+		<Compile Include="../external/imgui-cs/src/cs/production/imgui/imgui.cs" Link="ImGui\imgui.cs" />
+		<Compile Include="../external/sokol-cs/src/cs/production/sokol/sokol.cs" Link="Sokol\sokol.cs" />
+		<Compile Include="../external/sokol-cs/src/cs/production/sokol/Rgba32F.cs" Link="Sokol\Rgba32F.cs" />
+		<Compile Include="../external/sokol-cs/src/cs/production/sokol/Rgba32F.Colors.cs" Link="Sokol\Rgba32F.Colors.cs" />
 	</ItemGroup>
 	<!-- END DEPENDENCIES-->
 
@@ -28,6 +32,7 @@
 	<ItemGroup Condition="'$(AOT)' == 'true'">
 		<PackageReference Include="Microsoft.DotNet.ILCompiler" Version="7.0.0-*" />
 	</ItemGroup>
+
 
 	<PropertyGroup Condition="'$(AOT)' == 'true'">
 		<IlcGenerateCompleteTypeMetadata>false</IlcGenerateCompleteTypeMetadata>
