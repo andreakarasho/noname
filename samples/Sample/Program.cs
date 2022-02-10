@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-using System.Threading;
-using SDL2;
 using System.Runtime.CompilerServices;
 
 using noname;
+using SDL2;
 
 using static bottlenoselabs.sokol;
 using static bottlenoselabs.imgui;
@@ -13,7 +12,7 @@ unsafe
 {    
     Backend.Run(new Backend.BackendDescription()
     {
-        WindowTitle = "backend test",
+        WindowTitle = "Sample with SDL + sokol",
         OnInit = &OnInit,
         OnShutdown = &OnShutdown,
         OnFrame = &OnFrame,

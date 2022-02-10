@@ -14,7 +14,7 @@ using static bottlenoselabs.sokol;
 
 namespace noname
 {
-    unsafe class ImGuiRenderer
+    public unsafe class ImGuiRenderer
     {
         private ImGuiContext* _context;
         private ImGuiState _state;
