@@ -4,3 +4,9 @@
 [submodule "external/sokol-csharp"]
 	path = external/sokol-csharp
 	url = https://github.com/andreakarasho/sokol-csharp.git
+[submodule "external/imgui-cs"]
+	path = external/imgui-cs
+	url = https://github.com/bottlenoselabs/imgui-cs.git
+[submodule "external/sokol-cs"]
+	path = external/sokol-cs
+	url = https://github.com/bottlenoselabs/sokol-cs.git
