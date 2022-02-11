@@ -61,7 +61,7 @@ unsafe
         };
 
         var bufferDesc = new sg_buffer_desc();
-        bufferDesc.data = new sg_range() { ptr = Unsafe.AsPointer(ref vertices[0]), size = (nuint)(sizeof(float) * vertices.Length) };
+        bufferDesc.data = new sg_range() { ptr = vertices[0].GetPointer(), size = (nuint)(sizeof(float) * vertices.Length) };
         State.Bindings.vertex_buffers[0] = sg_make_buffer(&bufferDesc);
 
         var shaderDesc = GetShaderDesc();
@@ -74,7 +74,6 @@ unsafe
         pipelineDesc.layout.attrs[0].format = sg_vertex_format.SG_VERTEXFORMAT_FLOAT3;
         pipelineDesc.layout.attrs[1].format = sg_vertex_format.SG_VERTEXFORMAT_FLOAT4;
         State.Pipeline = sg_make_pipeline(&pipelineDesc);
-
 
 
         ImGuiRenderer.Setup(default);
@@ -101,14 +100,20 @@ unsafe
 
         igShowDemoWindow(null);
 
-        var action = default(sg_pass_action);
-        //ref var colorAttachment = ref action.colors[0];
-        //colorAttachment.action = sg_action.SG_ACTION_CLEAR;
-        //colorAttachment.value = Rgba32F.Black;
+        ref var colorAttachment = ref State.Pass.colors[0];
+        colorAttachment.action = sg_action.SG_ACTION_CLEAR;
 
-        sg_begin_default_pass(&action, Backend.Width, Backend.Height);
+        if (igBegin("a window", null, ImGuiWindowFlags_None))
+        {     
+            igColorEdit4("color", (float*)colorAttachment.value.GetPointer(), ImGuiColorEditFlags_None);
+        }
+        igEnd();
+
+        
+
+        sg_begin_default_pass(State.Pass.GetPointer(), Backend.Width, Backend.Height);
         sg_apply_pipeline(State.Pipeline);
-        sg_apply_bindings((sg_bindings*) Unsafe.AsPointer(ref State.Bindings));
+        sg_apply_bindings(State.Bindings.GetPointer());
         sg_draw(0, 3, 1);
 
         ImGuiRenderer.Render();
@@ -206,6 +211,7 @@ unsafe
 
 static class State
 {
+    public static sg_pass_action Pass;
     public static sg_pipeline Pipeline;
     public static sg_bindings Bindings;
 }
