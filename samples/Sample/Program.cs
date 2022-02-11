@@ -55,8 +55,10 @@ unsafe
         State.Camera.Position = new Vector3(-6.0f, 4.0f, 6.0f);
         State.Camera.Yaw = -MathF.PI / 4;
         State.Camera.Pitch = -MathF.PI / 9;
-
         State.Camera.WindowResized(Backend.Width, Backend.Height);
+
+        ref var cube = ref State.Cube;
+        cube.Scale = new Vector3(1, 1, 1);
 
         ImGuiRenderer.Setup(default);
     }
@@ -85,9 +87,29 @@ unsafe
         ref var colorAttachment = ref State.Pass.colors[0];
         colorAttachment.action = sg_action.SG_ACTION_CLEAR;
 
-        if (igBegin("Camera info", null, ImGuiWindowFlags_AlwaysAutoResize))
+        if (igBegin("Inspector", null, ImGuiWindowFlags_AlwaysAutoResize))
         {
             //igColorEdit4("color", (float*)colorAttachment.value.GetPointer(), ImGuiColorEditFlags_None);
+
+            igTextDisabled("Camera");
+
+            var pos = State.Camera.Position;
+            if (igDragFloat3("Position##pos_camera", (float*)pos.GetPointer(), 0.1f, 0,0, "%.3f", 0))
+            {
+                State.Camera.Position = pos;
+            }
+
+            var yaw = State.Camera.Yaw;
+            if (igDragFloat("Yaw##yaw_camera", &yaw, 0.1f, 0, 0, "%.3f", 0))
+            {
+                State.Camera.Yaw = yaw;
+            }
+
+            var pitch = State.Camera.Pitch;
+            if (igDragFloat("Pitch##pitch_camera", &pitch, 0.1f, 0, 0, "%.3f", 0))
+            {
+                State.Camera.Pitch = pitch;
+            }
 
             if (igButton("Reset camera", Vector2.Zero))
             {
@@ -96,26 +118,36 @@ unsafe
                 State.Camera.Pitch = -MathF.PI / 9;
             }
 
-            var pos = State.Camera.Position;
-
-            if (igDragFloat3("Position", (float*)pos.GetPointer(), 0.1f, 0,0, "%.3f", 0))
-            {
-                State.Camera.Position = pos;
-            }
-
-            var yaw = State.Camera.Yaw;
-            if (igDragFloat("Yaw", &yaw, 0.1f, 0, 0, "%.3f", 0))
-            {
-                State.Camera.Yaw = yaw;
-            }
-
-            var pitch = State.Camera.Pitch;
-            if (igDragFloat("Pitch", &pitch, 0.1f, 0, 0, "%.3f", 0))
-            {
-                State.Camera.Pitch = pitch;
-            }
-
             igNewLine();
+            igSeparator();
+            igNewLine();
+
+            igTextDisabled("Cube");
+            pos = State.Cube.Position;
+            if (igDragFloat3("Position##pos_cube", (float*)pos.GetPointer(), 0.1f, 0, 0, "%.3f", 0))
+            {
+                State.Cube.Position = pos;
+            }
+
+            pos = State.Cube.Scale;
+            if (igDragFloat3("Scale##scale_cube", (float*)pos.GetPointer(), 0.1f, 0, 0, "%.3f", 0))
+            {
+                State.Cube.Scale = pos;
+            }
+
+            var rot = State.Cube.Rotation;
+            if (igDragFloat2("Rotation##rot_cube", (float*)rot.GetPointer(), 0.1f, 0, 0, "%.3f", 0))
+            {
+                State.Cube.Rotation = rot;
+            }
+
+            pos = State.Cube.Origin;
+            if (igDragFloat3("Origin##origin_cube", (float*)pos.GetPointer(), 0.1f, 0, 0, "%.3f", 0))
+            {
+                State.Cube.Origin = pos;
+            }
+
+            igCheckbox("Rotate automatically##auto_rotate_cube", (bottlenoselabs.imgui.Runtime.CBool*)State.AutoRotate.GetPointer());
         }
         igEnd();
 
@@ -317,30 +349,27 @@ unsafe
 
     static void RotateCube()
     {
-        const float deltaSeconds = 1 / 60f;
+        ref var cube = ref State.Cube;
 
-        //State.CubeRotationX += 1.0f * deltaSeconds * 0.5f;
-        //State.CubeRotationY += 1.0f * deltaSeconds * 0.5f;
-        var rotationMatrixX = Matrix4x4.CreateFromAxisAngle(Vector3.UnitX, State.CubeRotationX);
-        var rotationMatrixY = Matrix4x4.CreateFromAxisAngle(Vector3.UnitY, State.CubeRotationY);
-        var modelMatrix = rotationMatrixX * rotationMatrixY;
+        bool autoRotate = State.AutoRotate;
 
-        //var width = Backend.Width;
-        //var height = Backend.Height;
+        if (State.AutoRotate)
+        {
+            cube.Rotation.X += 0.5f * 1f / 144f;
+            cube.Rotation.Y += 0.5f * 1f / 144f;
+        }
 
-        //var projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfView(
-        //    (float)(60.0f * Math.PI / 180),
-        //    width / height,
-        //    0.01f,
-        //    10.0f);
-        //var viewMatrix = Matrix4x4.CreateLookAt(
-        //    State.Camera.Position,
-        //    Vector3.Zero,
-        //    Vector3.UnitY);
+        var modelMatrix =
+           Matrix4x4.CreateTranslation(-cube.Origin) *
+           Matrix4x4.CreateScale(cube.Scale) *
+           Matrix4x4.CreateRotationX(cube.Rotation.X) *
+           Matrix4x4.CreateRotationY(cube.Rotation.Y) *      
+           Matrix4x4.CreateTranslation(cube.Position);
 
-        //State.VertexShaderParams.ModelViewProjection = modelMatrix * viewMatrix * projectionMatrix;
-
-        State.VertexShaderParams.ModelViewProjection = modelMatrix * State.Camera.ViewMatrix * State.Camera.ProjectionMatrix ;
+        State.VertexShaderParams.ModelViewProjection = 
+            modelMatrix * 
+            State.Camera.ViewMatrix * 
+            State.Camera.ProjectionMatrix ;
     }
 
     static sg_buffer CreateVertexBuffer()
@@ -534,17 +563,25 @@ static class State
     public static sg_bindings Bindings;
     public static VertexShaderParams VertexShaderParams;
 
-    public static float CubeRotationX;
-    public static float CubeRotationY;
-
     public static Camera Camera;
     public static Mouse Mouse;
     public static Keyboard Keyboard;
+    public static Cube Cube;
+
+    public static bool AutoRotate;
 }
 
 struct VertexShaderParams
 {
     public Matrix4x4 ModelViewProjection;
+}
+
+struct Cube
+{
+    public Vector3 Position;
+    public Vector3 Scale;
+    public Vector2 Rotation;
+    public Vector3 Origin;
 }
 
 struct Vertex
