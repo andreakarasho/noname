@@ -52,9 +52,9 @@ unsafe
         State.Pipeline = sg_make_pipeline(&pipelineDesc);
      
         State.Camera = new Camera();
-        State.Camera.Position = new Vector3(0.0f, 1.5f, 6.0f);
-        State.Camera.Yaw = 0;
-        State.Camera.Pitch = 0;
+        State.Camera.Position = new Vector3(-6.0f, 4.0f, 6.0f);
+        State.Camera.Yaw = -MathF.PI / 4;
+        State.Camera.Pitch = -MathF.PI / 9;
 
         State.Camera.WindowResized(Backend.Width, Backend.Height);
 
