@@ -7,6 +7,7 @@ using SDL2;
 
 using static bottlenoselabs.sokol;
 using static bottlenoselabs.imgui;
+using System.Numerics;
 
 unsafe
 {    
@@ -33,36 +34,9 @@ unsafe
 
         sg_setup(&desc);
 
-        /* a vertex buffer with 3 vertices */
-        Span<float> vertices = stackalloc float[]
-        {
-            // positions            // colors
-            0.0f,
-            0.5f,
-            0.5f,
-            1.0f,
-            0.0f,
-            0.0f,
-            1.0f,
-            0.5f,
-            -0.5f,
-            0.5f,
-            0.0f,
-            1.0f,
-            0.0f,
-            1.0f,
-            -0.5f,
-            -0.5f,
-            0.5f,
-            0.0f,
-            0.0f,
-            1.0f,
-            1.0f
-        };
 
-        var bufferDesc = new sg_buffer_desc();
-        bufferDesc.data = new sg_range() { ptr = vertices[0].GetPointer(), size = (nuint)(sizeof(float) * vertices.Length) };
-        State.Bindings.vertex_buffers[0] = sg_make_buffer(&bufferDesc);
+        State.Bindings.vertex_buffers[0] = CreateVertexBuffer();
+        State.Bindings.index_buffer = CreateIndexBuffer();
 
         var shaderDesc = GetShaderDesc();
         var shd = sg_make_shader(&shaderDesc);
@@ -71,6 +45,8 @@ unsafe
             shader = shd,
             label = "triangle-pipeline",
         };
+        pipelineDesc.index_type = sg_index_type.SG_INDEXTYPE_UINT16;
+        pipelineDesc.cull_mode = sg_cull_mode.SG_CULLMODE_BACK;
         pipelineDesc.layout.attrs[0].format = sg_vertex_format.SG_VERTEXFORMAT_FLOAT3;
         pipelineDesc.layout.attrs[1].format = sg_vertex_format.SG_VERTEXFORMAT_FLOAT4;
         State.Pipeline = sg_make_pipeline(&pipelineDesc);
@@ -109,12 +85,18 @@ unsafe
         }
         igEnd();
 
-        
+        RotateCube();
 
         sg_begin_default_pass(State.Pass.GetPointer(), Backend.Width, Backend.Height);
         sg_apply_pipeline(State.Pipeline);
         sg_apply_bindings(State.Bindings.GetPointer());
-        sg_draw(0, 3, 1);
+
+        var uniforms = default(sg_range);
+        uniforms.ptr = State.VertexShaderParams.GetPointer();
+        uniforms.size = (ulong)sizeof(VertexShaderParams);
+        sg_apply_uniforms(sg_shader_stage.SG_SHADERSTAGE_VS, 0, &uniforms);
+
+        sg_draw(0, 36, 1);
 
         ImGuiRenderer.Render();
 
@@ -133,42 +115,60 @@ unsafe
     static sg_shader_desc GetShaderDesc()
     {
         var desc = default(sg_shader_desc);
+        ref var uniformBlock = ref desc.vs.uniform_blocks[0];
+        uniformBlock.size = (ulong)sizeof(VertexShaderParams);
+        ref var mvpUniform = ref uniformBlock.uniforms[0];
+        mvpUniform.name = "mvp";
+        mvpUniform.type = sg_uniform_type.SG_UNIFORMTYPE_MAT4;
+
         switch (sg_query_backend())
         {
             case sg_backend.SG_BACKEND_D3D11:
-                desc.attrs[0].sem_name = "POS";
+                desc.attrs[0].sem_name = "POSITION";
                 desc.attrs[1].sem_name = "COLOR";
+                desc.attrs[0].sem_index = 0;
+                desc.attrs[1].sem_index = 1;
                 desc.vs.source = @"
-                struct vs_in {
-                  float4 pos: POS;
-                  float4 color: COLOR;
+                cbuffer params: register(b0)
+                {
+                    float4x4 mvp;
                 };
-                struct vs_out {
-                  float4 color: COLOR0;
-                  float4 pos: SV_Position;
+                struct vs_in
+                {
+                    float4 pos: POSITION;
+                    float4 color: COLOR1;
                 };
-                vs_out main(vs_in inp) {
-                  vs_out outp;
-                  outp.pos = inp.pos;
-                  outp.color = inp.color;
-                  return outp;
-                }";
+                struct vs_out
+                {
+                    float4 color: COLOR0;
+                    float4 pos: SV_Position;
+                };
+                vs_out main(vs_in inp)
+                {
+                    vs_out outp;
+                    outp.pos = mul(mvp, inp.pos);
+                    outp.color = inp.color;
+                    return outp;
+                };";
                 desc.fs.source = @"
-                float4 main(float4 color: COLOR0): SV_Target0 {
-                  return color;
-                }";
+                float4 main(float4 color: COLOR0): SV_Target0
+                {
+                    return color;
+                };";
                 break;
             case sg_backend.SG_BACKEND_GLCORE33:
                 desc.attrs[0].name = "position";
                 desc.attrs[1].name = "color0";
                 desc.vs.source = @"
-                # version 330
-                in vec4 position;
-                in vec4 color0;
+                #version 330
+                uniform mat4 mvp;
+                layout(location=0) in vec4 position;
+                layout(location=1) in vec4 color0;
                 out vec4 color;
-                void main() {
-                  gl_Position = position;
-                  color = color0;
+                void main()
+                {
+                    gl_Position = mvp * position;
+                    color = color0;
                 }";
 
                 desc.fs.source = @"
@@ -181,24 +181,27 @@ unsafe
                 break;
             case sg_backend.SG_BACKEND_METAL_MACOS:
                 desc.vs.source = @"
-                # include <metal_stdlib>
+                #include <metal_stdlib>
                 using namespace metal;
+                struct params_t {
+                    float4x4 mvp;
+                };
                 struct vs_in {
-                  float4 position [[attribute(0)]];
-                  float4 color [[attribute(1)]];
+                    float4 position [[attribute(0)]];
+                    float4 color [[attribute(1)]];
                 };
                 struct vs_out {
-                  float4 position [[position]];
-                  float4 color;
+                    float4 pos [[position]];
+                    float4 color;
                 };
-                vertex vs_out _main(vs_in inp [[stage_in]]) {
-                  vs_out outp;
-                  outp.position = inp.position;
-                  outp.color = inp.color;
-                  return outp;
+                vertex vs_out _main(vs_in in [[stage_in]], constant params_t& params [[buffer(0)]]) {
+                    vs_out out;
+                    out.pos = params.mvp * in.position;
+                    out.color = in.color;
+                    return out;
                 }";
                 desc.fs.source = @"
-# include <metal_stdlib>
+                #include <metal_stdlib>
                 using namespace metal;
                 fragment float4 _main(float4 color [[stage_in]]) {
                    return color;
@@ -206,7 +209,182 @@ unsafe
                 break;
         }
         return desc;
-    }  
+    }
+
+    static void RotateCube()
+    {
+        const float deltaSeconds = 1 / 60f;
+
+        State.CubeRotationX += 1.0f * deltaSeconds * 0.5f;
+        State.CubeRotationY += 1.0f * deltaSeconds * 0.5f;
+        var rotationMatrixX = Matrix4x4.CreateFromAxisAngle(Vector3.UnitX, State.CubeRotationX);
+        var rotationMatrixY = Matrix4x4.CreateFromAxisAngle(Vector3.UnitY, State.CubeRotationY);
+        var modelMatrix = rotationMatrixX * rotationMatrixY;
+
+        var width = Backend.Width;
+        var height = Backend.Height;
+
+        var projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfView(
+            (float)(60.0f * Math.PI / 180),
+            width / height,
+            0.01f,
+            10.0f);
+        var viewMatrix = Matrix4x4.CreateLookAt(
+            new Vector3(0.0f, 1.5f, 6.0f),
+            Vector3.Zero,
+            Vector3.UnitY);
+
+        State.VertexShaderParams.ModelViewProjection = modelMatrix * viewMatrix * projectionMatrix;
+    }
+
+    static sg_buffer CreateVertexBuffer()
+    {
+        var vertices = stackalloc Vertex[24];
+
+        // model vertices of the cube using standard cartesian coordinate system:
+        //    +Z is towards your eyes, -Z is towards the screen
+        //    +X is to the right, -X to the left
+        //    +Y is towards the sky (up), -Y is towards the floor (down)
+        const float leftX = -1.0f;
+        const float rightX = 1.0f;
+        const float bottomY = -1.0f;
+        const float topY = 1.0f;
+        const float backZ = -1.0f;
+        const float frontZ = 1.0f;
+
+        // each face of the cube is a rectangle (two triangles), each rectangle is 4 vertices
+        // rectangle 1; back
+        var color1 = Rgba32F.Red; // #FF0000
+        vertices[0].Position = new Vector3(leftX, bottomY, backZ);
+        vertices[0].Color = color1;
+        vertices[1].Position = new Vector3(rightX, bottomY, backZ);
+        vertices[1].Color = color1;
+        vertices[2].Position = new Vector3(rightX, topY, backZ);
+        vertices[2].Color = color1;
+        vertices[3].Position = new Vector3(leftX, topY, backZ);
+        vertices[3].Color = color1;
+        // rectangle 2; front
+        var color2 = Rgba32F.Lime; // NOTE: "lime" is #00FF00; "green" is actually #008000
+        vertices[4].Position = new Vector3(leftX, bottomY, frontZ);
+        vertices[4].Color = color2;
+        vertices[5].Position = new Vector3(rightX, bottomY, frontZ);
+        vertices[5].Color = color2;
+        vertices[6].Position = new Vector3(rightX, topY, frontZ);
+        vertices[6].Color = color2;
+        vertices[7].Position = new Vector3(leftX, topY, frontZ);
+        vertices[7].Color = color2;
+        // rectangle 3; left
+        var color3 = Rgba32F.Blue; // #0000FF
+        vertices[8].Position = new Vector3(leftX, bottomY, backZ);
+        vertices[8].Color = color3;
+        vertices[9].Position = new Vector3(leftX, topY, backZ);
+        vertices[9].Color = color3;
+        vertices[10].Position = new Vector3(leftX, topY, frontZ);
+        vertices[10].Color = color3;
+        vertices[11].Position = new Vector3(leftX, bottomY, frontZ);
+        vertices[11].Color = color3;
+        // rectangle 4; right
+        var color4 = Rgba32F.Yellow; // #FFFF00
+        vertices[12].Position = new Vector3(rightX, bottomY, backZ);
+        vertices[12].Color = color4;
+        vertices[13].Position = new Vector3(rightX, topY, backZ);
+        vertices[13].Color = color4;
+        vertices[14].Position = new Vector3(rightX, topY, frontZ);
+        vertices[14].Color = color4;
+        vertices[15].Position = new Vector3(rightX, bottomY, frontZ);
+        vertices[15].Color = color4;
+        // rectangle 5; bottom
+        var color5 = Rgba32F.Aqua; // #00FFFF
+        vertices[16].Position = new Vector3(leftX, bottomY, backZ);
+        vertices[16].Color = color5;
+        vertices[17].Position = new Vector3(leftX, bottomY, frontZ);
+        vertices[17].Color = color5;
+        vertices[18].Position = new Vector3(rightX, bottomY, frontZ);
+        vertices[18].Color = color5;
+        vertices[19].Position = new Vector3(rightX, bottomY, backZ);
+        vertices[19].Color = color5;
+        // rectangle 6; top
+        var color6 = Rgba32F.Fuchsia; // #FF00FF
+        vertices[20].Position = new Vector3(leftX, topY, backZ);
+        vertices[20].Color = color6;
+        vertices[21].Position = new Vector3(leftX, topY, frontZ);
+        vertices[21].Color = color6;
+        vertices[22].Position = new Vector3(rightX, topY, frontZ);
+        vertices[22].Color = color6;
+        vertices[23].Position = new Vector3(rightX, topY, backZ);
+        vertices[23].Color = color6;
+
+        var desc = new sg_buffer_desc
+        {
+            usage = sg_usage.SG_USAGE_IMMUTABLE,
+            type = sg_buffer_type.SG_BUFFERTYPE_VERTEXBUFFER,
+            data =
+                {
+                    ptr = vertices,
+                    size = (uint) (sizeof(Vertex) * 24)
+                }
+        };
+
+
+        return sg_make_buffer(&desc);
+    }
+
+    static sg_buffer CreateIndexBuffer()
+    {
+        var indices = stackalloc ushort[]
+        {
+            0,
+            1,
+            2,
+            0,
+            2,
+            3, // rectangle 1 of cube, back, clockwise, base vertex: 0
+            6,
+            5,
+            4,
+            7,
+            6,
+            4, // rectangle 2 of cube, front, counter-clockwise, base vertex: 4
+            8,
+            9,
+            10,
+            8,
+            10,
+            11, // rectangle 3 of cube, left, clockwise, base vertex: 8
+            14,
+            13,
+            12,
+            15,
+            14,
+            12, // rectangle 4 of cube, right, counter-clockwise, base vertex: 12
+            16,
+            17,
+            18,
+            16,
+            18,
+            19, // rectangle 5 of cube, bottom, clockwise, base vertex: 16
+            22,
+            21,
+            20,
+            23,
+            22,
+            20 // rectangle 6 of cube, top, counter-clockwise, base vertex: 20
+        };
+
+        var desc = new sg_buffer_desc
+        {
+            usage = sg_usage.SG_USAGE_IMMUTABLE,
+            type = sg_buffer_type.SG_BUFFERTYPE_INDEXBUFFER,
+            data =
+                {
+                    ptr = indices,
+                    size = (uint) sizeof(ushort) * 36
+                }
+        };
+
+
+        return sg_make_buffer(&desc);
+    }
 }
 
 static class State
@@ -214,4 +392,19 @@ static class State
     public static sg_pass_action Pass;
     public static sg_pipeline Pipeline;
     public static sg_bindings Bindings;
+    public static VertexShaderParams VertexShaderParams;
+
+    public static float CubeRotationX;
+    public static float CubeRotationY;
+}
+
+struct VertexShaderParams
+{
+    public Matrix4x4 ModelViewProjection;
+}
+
+struct Vertex
+{
+    public Vector3 Position;
+    public Rgba32F Color;
 }
