@@ -248,6 +248,67 @@ unsafe
         }
     }
 
+
+    static void RotateCube()
+    {
+        ref var cube = ref State.Cube;
+
+        bool autoRotate = State.AutoRotate;
+
+        if (State.AutoRotate)
+        {
+            cube.Rotation.X += 0.5f * State.DELTA_FACTOR;
+            cube.Rotation.Y += 0.5f * State.DELTA_FACTOR;
+        }
+
+        var modelMatrix =
+           Matrix4x4.CreateTranslation(-cube.Origin) *
+           Matrix4x4.CreateScale(cube.Scale) *
+           Matrix4x4.CreateRotationX(cube.Rotation.X) *
+           Matrix4x4.CreateRotationY(cube.Rotation.Y) *      
+           Matrix4x4.CreateTranslation(cube.Position);
+
+        State.VertexShaderParams.ModelViewProjection = 
+            modelMatrix * 
+            State.Camera.ViewMatrix * 
+            State.Camera.ProjectionMatrix ;
+    }
+
+    static void UpdateCamera()
+    {
+        float sprintFactor = State.Keyboard.Ctrl ? 0.1f : State.Keyboard.Shift ? 2.5f : 1f;
+        Vector3 motionDir = Vector3.Zero;
+
+
+        if (State.Keyboard.KeyDown[(int)SDL.SDL_Keycode.SDLK_w])
+        {
+            motionDir += -Vector3.UnitZ;
+        }
+        if (State.Keyboard.KeyDown[(int)SDL.SDL_Keycode.SDLK_a])
+        {
+            motionDir += -Vector3.UnitX;
+        }
+        if (State.Keyboard.KeyDown[(int)SDL.SDL_Keycode.SDLK_s])
+        {
+            motionDir += Vector3.UnitZ;
+        }
+        if (State.Keyboard.KeyDown[(int)SDL.SDL_Keycode.SDLK_d])
+        {
+            motionDir += Vector3.UnitX;
+        }
+        if (State.Keyboard.KeyDown[(int)SDL.SDL_Keycode.SDLK_q])
+        {
+            motionDir += -Vector3.UnitY;
+        }
+        if (State.Keyboard.KeyDown[(int)SDL.SDL_Keycode.SDLK_e])
+        {
+            motionDir += Vector3.UnitY;
+        }
+
+        State.Camera.Move(motionDir * sprintFactor * 5 * State.DELTA_FACTOR);
+    }
+
+
     static sg_shader_desc GetShaderDesc()
     {
         var desc = default(sg_shader_desc);
@@ -345,31 +406,6 @@ unsafe
                 break;
         }
         return desc;
-    }
-
-    static void RotateCube()
-    {
-        ref var cube = ref State.Cube;
-
-        bool autoRotate = State.AutoRotate;
-
-        if (State.AutoRotate)
-        {
-            cube.Rotation.X += 0.5f * 1f / 144f;
-            cube.Rotation.Y += 0.5f * 1f / 144f;
-        }
-
-        var modelMatrix =
-           Matrix4x4.CreateTranslation(-cube.Origin) *
-           Matrix4x4.CreateScale(cube.Scale) *
-           Matrix4x4.CreateRotationX(cube.Rotation.X) *
-           Matrix4x4.CreateRotationY(cube.Rotation.Y) *      
-           Matrix4x4.CreateTranslation(cube.Position);
-
-        State.VertexShaderParams.ModelViewProjection = 
-            modelMatrix * 
-            State.Camera.ViewMatrix * 
-            State.Camera.ProjectionMatrix ;
     }
 
     static sg_buffer CreateVertexBuffer()
@@ -520,40 +556,6 @@ unsafe
 
         return sg_make_buffer(&desc);
     }
-
-    static void UpdateCamera()
-    { 
-        float sprintFactor = State.Keyboard.Ctrl ? 0.1f : State.Keyboard.Shift ? 2.5f : 1f;
-        Vector3 motionDir = Vector3.Zero;
-
-
-        if (State.Keyboard.KeyDown[(int)SDL.SDL_Keycode.SDLK_w])
-        {
-            motionDir += -Vector3.UnitZ;
-        }
-        if (State.Keyboard.KeyDown[(int)SDL.SDL_Keycode.SDLK_a])
-        {
-            motionDir += -Vector3.UnitX;
-        }
-        if (State.Keyboard.KeyDown[(int)SDL.SDL_Keycode.SDLK_s])
-        {
-            motionDir += Vector3.UnitZ;
-        }
-        if (State.Keyboard.KeyDown[(int)SDL.SDL_Keycode.SDLK_d])
-        {
-            motionDir += Vector3.UnitX;
-        }
-        if (State.Keyboard.KeyDown[(int)SDL.SDL_Keycode.SDLK_q])
-        {
-            motionDir += -Vector3.UnitY;
-        }
-        if (State.Keyboard.KeyDown[(int)SDL.SDL_Keycode.SDLK_e])
-        {
-            motionDir += Vector3.UnitY;
-        }
-
-        State.Camera.Move(motionDir * sprintFactor * 5 * (1f / 144f));
-    }
 }
 
 static class State
@@ -569,6 +571,8 @@ static class State
     public static Cube Cube;
 
     public static bool AutoRotate;
+
+    public const float DELTA_FACTOR = 1f / 144f;
 }
 
 struct VertexShaderParams
@@ -599,6 +603,5 @@ struct Mouse
 struct Keyboard
 {
     public unsafe fixed bool KeyDown[512];
-
     public bool Ctrl, Alt, Shift;
 }

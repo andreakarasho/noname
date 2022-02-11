@@ -10,6 +10,8 @@ using SDL2;
 
 using static SDL2.SDL;
 using static bottlenoselabs.sokol;
+using System.Diagnostics;
+using System.Threading;
 
 namespace noname
 {
@@ -61,6 +63,7 @@ namespace noname
                 _desc.OnInit(_desc.Userdata);
             }
 
+            var sw = Stopwatch.StartNew();
             bool done = false;
 
             while (!done)
