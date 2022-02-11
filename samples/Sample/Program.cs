@@ -43,7 +43,7 @@ unsafe
         var pipelineDesc = new sg_pipeline_desc()
         {
             shader = shd,
-            label = "triangle-pipeline",
+            label = "cube-pipeline",
         };
         pipelineDesc.index_type = sg_index_type.SG_INDEXTYPE_UINT16;
         pipelineDesc.cull_mode = sg_cull_mode.SG_CULLMODE_BACK;
