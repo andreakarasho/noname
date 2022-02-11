@@ -85,7 +85,7 @@ unsafe
         ref var colorAttachment = ref State.Pass.colors[0];
         colorAttachment.action = sg_action.SG_ACTION_CLEAR;
 
-        if (igBegin("Camera info", null, ImGuiWindowFlags_None))
+        if (igBegin("Camera info", null, ImGuiWindowFlags_AlwaysAutoResize))
         {
             //igColorEdit4("color", (float*)colorAttachment.value.GetPointer(), ImGuiColorEditFlags_None);
 
