@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
-
+using System.Numerics;
 using noname;
 using SDL2;
+using Sample;
 
 using static bottlenoselabs.sokol;
 using static bottlenoselabs.imgui;
-using System.Numerics;
 
 unsafe
 {    
@@ -50,7 +50,13 @@ unsafe
         pipelineDesc.layout.attrs[0].format = sg_vertex_format.SG_VERTEXFORMAT_FLOAT3;
         pipelineDesc.layout.attrs[1].format = sg_vertex_format.SG_VERTEXFORMAT_FLOAT4;
         State.Pipeline = sg_make_pipeline(&pipelineDesc);
+     
+        State.Camera = new Camera();
+        State.Camera.Position = new Vector3(0.0f, 1.5f, 6.0f);
+        State.Camera.Yaw = 0;
+        State.Camera.Pitch = 0;
 
+        State.Camera.WindowResized(Backend.Width, Backend.Height);
 
         ImGuiRenderer.Setup(default);
     }
@@ -79,13 +85,42 @@ unsafe
         ref var colorAttachment = ref State.Pass.colors[0];
         colorAttachment.action = sg_action.SG_ACTION_CLEAR;
 
-        if (igBegin("a window", null, ImGuiWindowFlags_None))
-        {     
-            igColorEdit4("color", (float*)colorAttachment.value.GetPointer(), ImGuiColorEditFlags_None);
+        if (igBegin("Camera info", null, ImGuiWindowFlags_None))
+        {
+            //igColorEdit4("color", (float*)colorAttachment.value.GetPointer(), ImGuiColorEditFlags_None);
+
+            if (igButton("Reset camera", Vector2.Zero))
+            {
+                State.Camera.Position = new Vector3(-6.0f, 4.0f, 6.0f);
+                State.Camera.Yaw = -MathF.PI / 4;
+                State.Camera.Pitch = -MathF.PI / 9;
+            }
+
+            var pos = State.Camera.Position;
+
+            if (igDragFloat3("Position", (float*)pos.GetPointer(), 0.1f, 0,0, "%.3f", 0))
+            {
+                State.Camera.Position = pos;
+            }
+
+            var yaw = State.Camera.Yaw;
+            if (igDragFloat("Yaw", &yaw, 0.1f, 0, 0, "%.3f", 0))
+            {
+                State.Camera.Yaw = yaw;
+            }
+
+            var pitch = State.Camera.Pitch;
+            if (igDragFloat("Pitch", &pitch, 0.1f, 0, 0, "%.3f", 0))
+            {
+                State.Camera.Pitch = pitch;
+            }
+
+            igNewLine();
         }
         igEnd();
 
         RotateCube();
+        UpdateCamera();
 
         sg_begin_default_pass(State.Pass.GetPointer(), Backend.Width, Backend.Height);
         sg_apply_pipeline(State.Pipeline);
@@ -110,6 +145,75 @@ unsafe
     static void OnEvent(SDL.SDL_Event* ev, void* userdata)
     {
         ImGuiRenderer.HandleEvent(ev);
+
+        ref var e = ref ev->GetRef();
+    
+        switch (e.type)
+        {
+            case SDL.SDL_EventType.SDL_KEYDOWN:
+            case SDL.SDL_EventType.SDL_KEYUP:
+
+                bool isDown = e.type == SDL.SDL_EventType.SDL_KEYDOWN;
+
+                State.Keyboard.KeyDown[(int)e.key.keysym.sym & ~SDL.SDLK_SCANCODE_MASK] = isDown;
+
+                State.Keyboard.Ctrl = (e.key.keysym.mod & SDL.SDL_Keymod.KMOD_CTRL) != 0;
+                State.Keyboard.Alt = (e.key.keysym.mod & SDL.SDL_Keymod.KMOD_ALT) != 0;
+                State.Keyboard.Shift = (e.key.keysym.mod & SDL.SDL_Keymod.KMOD_SHIFT) != 0;
+
+                break;
+
+            case SDL.SDL_EventType.SDL_MOUSEBUTTONDOWN:
+            case SDL.SDL_EventType.SDL_MOUSEBUTTONUP:
+
+                isDown = e.type == SDL.SDL_EventType.SDL_MOUSEBUTTONDOWN;
+
+                if (isDown && igGetIO()->WantCaptureMouse)
+                {
+                    break;
+                }
+
+                if (e.button.button == SDL.SDL_BUTTON_LEFT)
+                {
+                    State.Mouse.LeftDown = isDown;
+                }
+
+                if (e.button.button == SDL.SDL_BUTTON_RIGHT)
+                {
+                    State.Mouse.RightDown = isDown;
+                }
+
+                if (e.button.button == SDL.SDL_BUTTON_MIDDLE)
+                {
+                    State.Mouse.MiddleDown = isDown;
+                }
+
+                break;
+
+            case SDL.SDL_EventType.SDL_MOUSEMOTION:
+
+                var pos = new Vector2(e.motion.x, e.motion.y);
+                
+                if (State.Mouse.LeftDown)
+                {
+                    State.Camera.LookAround(State.Mouse.Position - pos);
+                }
+
+                State.Mouse.Position = pos;
+
+                break;
+
+            case SDL.SDL_EventType.SDL_WINDOWEVENT:
+
+                switch (e.window.windowEvent)
+                {
+                    case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_RESIZED:
+                        State.Camera.WindowResized(Backend.Width, Backend.Height);
+                        break;
+                }
+
+                break;
+        }
     }
 
     static sg_shader_desc GetShaderDesc()
@@ -215,26 +319,28 @@ unsafe
     {
         const float deltaSeconds = 1 / 60f;
 
-        State.CubeRotationX += 1.0f * deltaSeconds * 0.5f;
-        State.CubeRotationY += 1.0f * deltaSeconds * 0.5f;
+        //State.CubeRotationX += 1.0f * deltaSeconds * 0.5f;
+        //State.CubeRotationY += 1.0f * deltaSeconds * 0.5f;
         var rotationMatrixX = Matrix4x4.CreateFromAxisAngle(Vector3.UnitX, State.CubeRotationX);
         var rotationMatrixY = Matrix4x4.CreateFromAxisAngle(Vector3.UnitY, State.CubeRotationY);
         var modelMatrix = rotationMatrixX * rotationMatrixY;
 
-        var width = Backend.Width;
-        var height = Backend.Height;
+        //var width = Backend.Width;
+        //var height = Backend.Height;
 
-        var projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfView(
-            (float)(60.0f * Math.PI / 180),
-            width / height,
-            0.01f,
-            10.0f);
-        var viewMatrix = Matrix4x4.CreateLookAt(
-            new Vector3(0.0f, 1.5f, 6.0f),
-            Vector3.Zero,
-            Vector3.UnitY);
+        //var projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfView(
+        //    (float)(60.0f * Math.PI / 180),
+        //    width / height,
+        //    0.01f,
+        //    10.0f);
+        //var viewMatrix = Matrix4x4.CreateLookAt(
+        //    State.Camera.Position,
+        //    Vector3.Zero,
+        //    Vector3.UnitY);
 
-        State.VertexShaderParams.ModelViewProjection = modelMatrix * viewMatrix * projectionMatrix;
+        //State.VertexShaderParams.ModelViewProjection = modelMatrix * viewMatrix * projectionMatrix;
+
+        State.VertexShaderParams.ModelViewProjection = modelMatrix * State.Camera.ViewMatrix * State.Camera.ProjectionMatrix ;
     }
 
     static sg_buffer CreateVertexBuffer()
@@ -385,6 +491,40 @@ unsafe
 
         return sg_make_buffer(&desc);
     }
+
+    static void UpdateCamera()
+    { 
+        float sprintFactor = State.Keyboard.Ctrl ? 0.1f : State.Keyboard.Shift ? 2.5f : 1f;
+        Vector3 motionDir = Vector3.Zero;
+
+
+        if (State.Keyboard.KeyDown[(int)SDL.SDL_Keycode.SDLK_w])
+        {
+            motionDir += -Vector3.UnitZ;
+        }
+        if (State.Keyboard.KeyDown[(int)SDL.SDL_Keycode.SDLK_a])
+        {
+            motionDir += -Vector3.UnitX;
+        }
+        if (State.Keyboard.KeyDown[(int)SDL.SDL_Keycode.SDLK_s])
+        {
+            motionDir += Vector3.UnitZ;
+        }
+        if (State.Keyboard.KeyDown[(int)SDL.SDL_Keycode.SDLK_d])
+        {
+            motionDir += Vector3.UnitX;
+        }
+        if (State.Keyboard.KeyDown[(int)SDL.SDL_Keycode.SDLK_q])
+        {
+            motionDir += -Vector3.UnitY;
+        }
+        if (State.Keyboard.KeyDown[(int)SDL.SDL_Keycode.SDLK_e])
+        {
+            motionDir += Vector3.UnitY;
+        }
+
+        State.Camera.Move(motionDir * sprintFactor * 5 * (1f / 144f));
+    }
 }
 
 static class State
@@ -396,6 +536,10 @@ static class State
 
     public static float CubeRotationX;
     public static float CubeRotationY;
+
+    public static Camera Camera;
+    public static Mouse Mouse;
+    public static Keyboard Keyboard;
 }
 
 struct VertexShaderParams
@@ -407,4 +551,17 @@ struct Vertex
 {
     public Vector3 Position;
     public Rgba32F Color;
+}
+
+struct Mouse
+{
+    public bool LeftDown, RightDown, MiddleDown;
+    public Vector2 Position;
+}
+
+struct Keyboard
+{
+    public unsafe fixed bool KeyDown[512];
+
+    public bool Ctrl, Alt, Shift;
 }
