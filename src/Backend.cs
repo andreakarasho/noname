@@ -10,8 +10,6 @@ using SDL2;
 
 using static SDL2.SDL;
 using static bottlenoselabs.sokol;
-using System.Diagnostics;
-using System.Threading;
 
 namespace noname
 {
@@ -63,7 +61,6 @@ namespace noname
                 _desc.OnInit(_desc.Userdata);
             }
 
-            var sw = Stopwatch.StartNew();
             bool done = false;
 
             while (!done)
@@ -81,10 +78,10 @@ namespace noname
 
                     if (_desc.OnEvent != null)
                     {
-                        _desc.OnEvent((SDL_Event*)Unsafe.AsPointer(ref ev), _desc.Userdata);
+                        _desc.OnEvent(ev.GetPointer(), _desc.Userdata);
                     }
                 }
-
+                
                 if (done)
                 {
                     break;

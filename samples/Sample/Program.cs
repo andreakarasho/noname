@@ -57,8 +57,24 @@ unsafe
         State.Camera.Pitch = -MathF.PI / 9;
         State.Camera.WindowResized(Backend.Width, Backend.Height);
 
-        ref var cube = ref State.Cube;
-        cube.Scale = new Vector3(1, 1, 1);
+        Vector3 pos = new Vector3();
+        const int DIST = 5;
+
+        for (int i = 0; i < State.Cubes.Length; ++i)
+        {
+            ref var cube = ref State.Cubes[i];
+            cube.Scale = new Vector3(1, 1, 1);
+
+            if (pos.X > 100)
+            {
+                pos.X = 0;
+                pos.Z += DIST;
+            }
+
+            pos.X += DIST;
+
+            cube.Position = pos;
+        }
 
         ImGuiRenderer.Setup(default);
     }
@@ -118,53 +134,52 @@ unsafe
                 State.Camera.Pitch = -MathF.PI / 9;
             }
 
-            igNewLine();
-            igSeparator();
-            igNewLine();
-
-            igTextDisabled("Cube");
-            pos = State.Cube.Position;
-            if (igDragFloat3("Position##pos_cube", (float*)pos.GetPointer(), 0.1f, 0, 0, "%.3f", 0))
+            for (int i = 0; i < State.Cubes.Length; ++i)
             {
-                State.Cube.Position = pos;
-            }
+                igNewLine();
+                igSeparator();
+                igNewLine();
 
-            pos = State.Cube.Scale;
-            if (igDragFloat3("Scale##scale_cube", (float*)pos.GetPointer(), 0.1f, 0, 0, "%.3f", 0))
-            {
-                State.Cube.Scale = pos;
-            }
+                ref var cube = ref State.Cubes[i];
 
-            var rot = State.Cube.Rotation;
-            if (igDragFloat2("Rotation##rot_cube", (float*)rot.GetPointer(), 0.1f, 0, 0, "%.3f", 0))
-            {
-                State.Cube.Rotation = rot;
-            }
+                igPushID_Int(i);
 
-            pos = State.Cube.Origin;
-            if (igDragFloat3("Origin##origin_cube", (float*)pos.GetPointer(), 0.1f, 0, 0, "%.3f", 0))
-            {
-                State.Cube.Origin = pos;
-            }
+                igTextDisabled($"Cube - #{i}");
+                igDragFloat3("Position##pos_cube", (float*)cube.Position.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
+                igDragFloat3("Scale##scale_cube", (float*)cube.Scale.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
+                igDragFloat2("Rotation##rot_cube", (float*)cube.Rotation.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
+                igDragFloat3("Origin##origin_cube", (float*)cube.Origin.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
 
+                igPopID();
+            }
+            
             igCheckbox("Rotate automatically##auto_rotate_cube", (bottlenoselabs.imgui.Runtime.CBool*)State.AutoRotate.GetPointer());
         }
         igEnd();
 
-        RotateCube();
+        
         UpdateCamera();
 
         sg_begin_default_pass(State.Pass.GetPointer(), Backend.Width, Backend.Height);
         sg_apply_pipeline(State.Pipeline);
         sg_apply_bindings(State.Bindings.GetPointer());
 
+
         var uniforms = default(sg_range);
-        uniforms.ptr = State.VertexShaderParams.GetPointer();
         uniforms.size = (ulong)sizeof(VertexShaderParams);
-        sg_apply_uniforms(sg_shader_stage.SG_SHADERSTAGE_VS, 0, &uniforms);
 
-        sg_draw(0, 36, 1);
+        for (int i = 0; i < State.Cubes.Length; ++i)
+        {
+            ref var cube = ref State.Cubes[i];
 
+            RotateCube(ref cube);
+           
+            // TODO: bottleneck. We need instancing!
+            uniforms.ptr = cube.VertexShaderParams.GetPointer();
+            sg_apply_uniforms(sg_shader_stage.SG_SHADERSTAGE_VS, 0, &uniforms);
+            sg_draw(0, 36, 1);
+        }
+       
         ImGuiRenderer.Render();
 
         sg_end_pass();
@@ -249,10 +264,8 @@ unsafe
     }
 
 
-    static void RotateCube()
+    static void RotateCube(ref Cube cube)
     {
-        ref var cube = ref State.Cube;
-
         bool autoRotate = State.AutoRotate;
 
         if (State.AutoRotate)
@@ -268,7 +281,7 @@ unsafe
            Matrix4x4.CreateRotationY(cube.Rotation.Y) *      
            Matrix4x4.CreateTranslation(cube.Position);
 
-        State.VertexShaderParams.ModelViewProjection = 
+        cube.VertexShaderParams.ModelViewProjection = 
             modelMatrix * 
             State.Camera.ViewMatrix * 
             State.Camera.ProjectionMatrix ;
@@ -563,12 +576,11 @@ static class State
     public static sg_pass_action Pass;
     public static sg_pipeline Pipeline;
     public static sg_bindings Bindings;
-    public static VertexShaderParams VertexShaderParams;
 
     public static Camera Camera;
     public static Mouse Mouse;
     public static Keyboard Keyboard;
-    public static Cube Cube;
+    public static Cube[] Cubes = new Cube[5];
 
     public static bool AutoRotate;
 
@@ -586,6 +598,8 @@ struct Cube
     public Vector3 Scale;
     public Vector2 Rotation;
     public Vector3 Origin;
+
+    public VertexShaderParams VertexShaderParams;
 }
 
 struct Vertex
