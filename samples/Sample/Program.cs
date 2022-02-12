@@ -49,6 +49,8 @@ unsafe
         pipelineDesc.cull_mode = sg_cull_mode.SG_CULLMODE_BACK;
         pipelineDesc.layout.attrs[0].format = sg_vertex_format.SG_VERTEXFORMAT_FLOAT3;
         pipelineDesc.layout.attrs[1].format = sg_vertex_format.SG_VERTEXFORMAT_FLOAT4;
+        pipelineDesc.depth.compare = sg_compare_func.SG_COMPAREFUNC_LESS_EQUAL;
+        pipelineDesc.depth.write_enabled = true;
         State.Pipeline = sg_make_pipeline(&pipelineDesc);
      
         State.Camera = new Camera();
