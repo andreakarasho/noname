@@ -105,7 +105,8 @@ unsafe
         ref var colorAttachment = ref State.Pass.colors[0];
         colorAttachment.action = sg_action.SG_ACTION_CLEAR;
 
-        if (igBegin("Inspector", null, ImGuiWindowFlags_AlwaysAutoResize))
+        igSetNextWindowSize(new Vector2(400, 600), ImGuiCond_FirstUseEver);
+        if (igBegin("Inspector", null, ImGuiWindowFlags_None))
         {
             //igColorEdit4("color", (float*)colorAttachment.value.GetPointer(), ImGuiColorEditFlags_None);
 
@@ -136,24 +137,32 @@ unsafe
                 State.Camera.Pitch = -MathF.PI / 9;
             }
 
-            for (int i = 0; i < State.Cubes.Length; ++i)
+            var clipper = new ImGuiListClipper();
+            ImGuiListClipper_Begin(&clipper, State.Cubes.Length, -1);
+
+            while (ImGuiListClipper_Step(&clipper))
             {
-                igNewLine();
-                igSeparator();
-                igNewLine();
+                for (var i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
+                {
+                    igNewLine();
+                    igSeparator();
+                    igNewLine();
 
-                ref var cube = ref State.Cubes[i];
+                    ref var cube = ref State.Cubes[i];
 
-                igPushID_Int(i);
+                    igPushID_Int(i);
 
-                igTextDisabled($"Cube - #{i}");
-                igDragFloat3("Position##pos_cube", (float*)cube.Position.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
-                igDragFloat3("Scale##scale_cube", (float*)cube.Scale.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
-                igDragFloat2("Rotation##rot_cube", (float*)cube.Rotation.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
-                igDragFloat3("Origin##origin_cube", (float*)cube.Origin.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
+                    igTextDisabled($"Cube - #{i}");
+                    igDragFloat3("Position##pos_cube", (float*)cube.Position.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
+                    igDragFloat3("Scale##scale_cube", (float*)cube.Scale.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
+                    igDragFloat2("Rotation##rot_cube", (float*)cube.Rotation.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
+                    igDragFloat3("Origin##origin_cube", (float*)cube.Origin.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
 
-                igPopID();
+                    igPopID();
+                }
             }
+
+            ImGuiListClipper_End(&clipper);
             
             igCheckbox("Rotate automatically##auto_rotate_cube", (bottlenoselabs.imgui.Runtime.CBool*)State.AutoRotate.GetPointer());
         }
@@ -582,7 +591,7 @@ static class State
     public static Camera Camera;
     public static Mouse Mouse;
     public static Keyboard Keyboard;
-    public static Cube[] Cubes = new Cube[5];
+    public static Cube[] Cubes = new Cube[50000];
 
     public static bool AutoRotate;
 
