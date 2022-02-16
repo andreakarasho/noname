@@ -8,9 +8,12 @@ using Sample;
 
 using static bottlenoselabs.sokol;
 using static bottlenoselabs.imgui;
+using Ecs;
+
 
 unsafe
-{    
+{
+
     Backend.Run(new Backend.BackendDescription()
     {
         WindowTitle = "Sample with SDL + sokol",
@@ -78,6 +81,8 @@ unsafe
             cube.Position = pos;
         }
 
+        EcsState.Init();
+
         ImGuiRenderer.Setup(default);
     }
 
@@ -99,8 +104,9 @@ unsafe
             GlobalMouseState = true
         });
 
-
-        igShowDemoWindow(null);
+        UpdateCamera();
+       
+        EcsState.Process();
 
         ref var colorAttachment = ref State.Pass.colors[0];
         colorAttachment.action = sg_action.SG_ACTION_CLEAR;
@@ -108,12 +114,18 @@ unsafe
         igSetNextWindowSize(new Vector2(400, 600), ImGuiCond_FirstUseEver);
         if (igBegin("Inspector", null, ImGuiWindowFlags_None))
         {
+            igCheckbox("process ESC", (bottlenoselabs.imgui.Runtime.CBool*)State.ProcessECS.GetPointer());
+            igSameLine(0, -1);
+            igCheckbox("Rotate automatically##auto_rotate_cube", (bottlenoselabs.imgui.Runtime.CBool*)State.AutoRotate.GetPointer());
+
+            igNewLine();
+
             //igColorEdit4("color", (float*)colorAttachment.value.GetPointer(), ImGuiColorEditFlags_None);
 
             igTextDisabled("Camera");
 
             var pos = State.Camera.Position;
-            if (igDragFloat3("Position##pos_camera", (float*)pos.GetPointer(), 0.1f, 0,0, "%.3f", 0))
+            if (igDragFloat3("Position##pos_camera", (float*)pos.GetPointer(), 0.1f, 0, 0, "%.3f", 0))
             {
                 State.Camera.Position = pos;
             }
@@ -138,7 +150,8 @@ unsafe
             }
 
             var clipper = new ImGuiListClipper();
-            ImGuiListClipper_Begin(&clipper, State.Cubes.Length, -1);
+           
+            ImGuiListClipper_Begin(&clipper, State.ProcessECS ? EcsState.Entities.Length : State.Cubes.Length, -1);
 
             while (ImGuiListClipper_Step(&clipper))
             {
@@ -148,55 +161,64 @@ unsafe
                     igSeparator();
                     igNewLine();
 
-                    ref var cube = ref State.Cubes[i];
-
                     igPushID_Int(i);
 
-                    igTextDisabled($"Cube - #{i}");
-                    igDragFloat3("Position##pos_cube", (float*)cube.Position.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
-                    igDragFloat3("Scale##scale_cube", (float*)cube.Scale.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
-                    igDragFloat2("Rotation##rot_cube", (float*)cube.Rotation.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
-                    igDragFloat3("Origin##origin_cube", (float*)cube.Origin.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
+                    if (State.ProcessECS)
+                    {
+                        ref var entity = ref EcsState.Entities[i];
+
+                        ref var position = ref EcsState.PositionStorage.GetComponent<Position>(entity);
+                        ref var origin = ref EcsState.OriginStorage.GetComponent<Origin>(entity);
+                        ref var scale = ref EcsState.ScaleStorage.GetComponent<Scale>(entity);
+                        ref var rotation = ref EcsState.RotationStorage.GetComponent<Rotation>(entity);
+
+                        igTextDisabled($"Entity - #{i}");
+                        igDragFloat3("Position##pos_cube", (float*)position.Value.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
+                        igDragFloat3("Scale##scale_cube", (float*)scale.Value.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
+                        igDragFloat2("Rotation##rot_cube", (float*)rotation.Value.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
+                        igDragFloat3("Origin##origin_cube", (float*)origin.Value.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
+                    }
+                    else
+                    {
+                        ref var cube = ref State.Cubes[i];
+
+                        igTextDisabled($"Cube - #{i}");
+                        igDragFloat3("Position##pos_cube", (float*)cube.Position.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
+                        igDragFloat3("Scale##scale_cube", (float*)cube.Scale.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
+                        igDragFloat2("Rotation##rot_cube", (float*)cube.Rotation.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
+                        igDragFloat3("Origin##origin_cube", (float*)cube.Origin.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
+                    }
 
                     igPopID();
+                   
                 }
             }
 
             ImGuiListClipper_End(&clipper);
-            
-            igCheckbox("Rotate automatically##auto_rotate_cube", (bottlenoselabs.imgui.Runtime.CBool*)State.AutoRotate.GetPointer());
         }
         igEnd();
 
-        
-        UpdateCamera();
 
         sg_begin_default_pass(State.Pass.GetPointer(), Backend.Width, Backend.Height);
         sg_apply_pipeline(State.Pipeline);
         sg_apply_bindings(State.Bindings.GetPointer());
 
 
-        var uniforms = default(sg_range);
-        uniforms.size = (ulong)sizeof(VertexShaderParams);
-
-        for (int i = 0; i < State.Cubes.Length; ++i)
+        if (State.ProcessECS)
         {
-            ref var cube = ref State.Cubes[i];
-
-            RotateCube(ref cube);
-           
-            // TODO: bottleneck. We need instancing!
-            uniforms.ptr = cube.VertexShaderParams.GetPointer();
-            sg_apply_uniforms(sg_shader_stage.SG_SHADERSTAGE_VS, 0, &uniforms);
-            sg_draw(0, 36, 1);
+            ProcessEntities();
         }
-       
+        else
+        {
+            ProcessCubes();
+        }
+        
         ImGuiRenderer.Render();
 
         sg_end_pass();
         sg_commit();
 
-        Thread.Sleep(1);
+        //Thread.Sleep(1);
     }
 
     [UnmanagedCallersOnly]
@@ -275,7 +297,72 @@ unsafe
     }
 
 
-    static void RotateCube(ref Cube cube)
+    static void ProcessCubes()
+    {
+        var uniforms = default(sg_range);
+        uniforms.size = (ulong)sizeof(VertexShaderParams);
+        var p = default(VertexShaderParams);
+        uniforms.ptr = p.GetPointer();
+
+        for (int i = 0; i < State.Cubes.Length; ++i)
+        {
+            ref var cube = ref State.Cubes[i];
+
+            RotateCube(ref cube, ref p.ModelViewProjection);
+
+            sg_apply_uniforms(sg_shader_stage.SG_SHADERSTAGE_VS, 0, &uniforms);
+            sg_draw(0, 36, 1);
+        }
+    }
+
+    static void ProcessEntities()
+    {
+        var uniforms = default(sg_range);
+        uniforms.size = (ulong)sizeof(VertexShaderParams);
+        var p = default(VertexShaderParams);
+        uniforms.ptr = p.GetPointer();
+
+        for (int i = 0; i < EcsState.Entities.Length; ++i)
+        {
+            ref var entity = ref EcsState.Entities[i];
+
+            RotateEntity(ref entity, ref p.ModelViewProjection);
+
+            sg_apply_uniforms(sg_shader_stage.SG_SHADERSTAGE_VS, 0, &uniforms);
+            sg_draw(0, 36, 1);
+        }
+    }
+
+
+    static void RotateEntity(ref int entity, ref Matrix4x4 modelMatrix)
+    {
+        ref var position = ref EcsState.PositionStorage.GetComponent<Position>(entity);
+        ref var origin = ref EcsState.OriginStorage.GetComponent<Origin>(entity);
+        ref var scale = ref EcsState.ScaleStorage.GetComponent<Scale>(entity);
+        ref var rotation = ref EcsState.RotationStorage.GetComponent<Rotation>(entity);
+
+
+        bool autoRotate = State.AutoRotate;
+
+        if (State.AutoRotate)
+        {
+            rotation.Value.X += 0.5f * State.DELTA_FACTOR;
+            rotation.Value.Y += 0.5f * State.DELTA_FACTOR;
+        }
+
+        modelMatrix =
+           Matrix4x4.CreateTranslation(-origin.Value) *
+           Matrix4x4.CreateScale(scale.Value) *
+           Matrix4x4.CreateRotationX(rotation.Value.X) *
+           Matrix4x4.CreateRotationY(rotation.Value.Y) *
+           Matrix4x4.CreateTranslation(position.Value);
+
+        modelMatrix = modelMatrix *
+            State.Camera.ViewMatrix *
+            State.Camera.ProjectionMatrix;
+    }
+
+    static void RotateCube(ref Cube cube, ref Matrix4x4 modelMatrix)
     {
         bool autoRotate = State.AutoRotate;
 
@@ -285,14 +372,14 @@ unsafe
             cube.Rotation.Y += 0.5f * State.DELTA_FACTOR;
         }
 
-        var modelMatrix =
+        modelMatrix =
            Matrix4x4.CreateTranslation(-cube.Origin) *
            Matrix4x4.CreateScale(cube.Scale) *
            Matrix4x4.CreateRotationX(cube.Rotation.X) *
            Matrix4x4.CreateRotationY(cube.Rotation.Y) *      
            Matrix4x4.CreateTranslation(cube.Position);
 
-        cube.VertexShaderParams.ModelViewProjection = 
+        modelMatrix = 
             modelMatrix * 
             State.Camera.ViewMatrix * 
             State.Camera.ProjectionMatrix ;
@@ -591,11 +678,13 @@ static class State
     public static Camera Camera;
     public static Mouse Mouse;
     public static Keyboard Keyboard;
-    public static Cube[] Cubes = new Cube[50000];
+    public static Cube[] Cubes = new Cube[GLOBAL.ENTITIES_COUNT];
 
     public static bool AutoRotate;
 
     public const float DELTA_FACTOR = 1f / 144f;
+
+    public static bool ProcessECS;
 }
 
 struct VertexShaderParams
@@ -609,8 +698,6 @@ struct Cube
     public Vector3 Scale;
     public Vector2 Rotation;
     public Vector3 Origin;
-
-    public VertexShaderParams VertexShaderParams;
 }
 
 struct Vertex
@@ -629,4 +716,140 @@ struct Keyboard
 {
     public unsafe fixed bool KeyDown[512];
     public bool Ctrl, Alt, Shift;
+}
+
+
+public struct Position
+{
+    public Vector3 Value;
+}
+
+public struct Origin
+{
+    public Vector3 Value;
+}
+
+public struct Scale
+{
+    public Vector3 Value;
+}
+
+public struct Rotation
+{
+    public Vector2 Value;
+}
+
+
+public class MatrixSystem : GameSystem<Position, Origin, Scale, Rotation>
+{
+    public override void ProcessEntity(ref Position position, ref Origin origin, ref Scale scale, ref Rotation rotation)
+    {
+        var modelMatrix =
+          Matrix4x4.CreateTranslation(-origin.Value) *
+          Matrix4x4.CreateScale(scale.Value) *
+          Matrix4x4.CreateRotationX(rotation.Value.X) *
+          Matrix4x4.CreateRotationY(rotation.Value.Y) *
+          Matrix4x4.CreateTranslation(position.Value);
+    }
+}
+
+public abstract class GameSystem<T1, T2, T3, T4> : GameSystem 
+    where T1 : unmanaged
+    where T2 : unmanaged
+    where T3 : unmanaged
+    where T4 : unmanaged
+{
+    public override void SetTypeMask(ComponentManager cm)
+    {
+        TypeMask |= cm.GetMask<T1>();
+        TypeMask |= cm.GetMask<T2>();
+        TypeMask |= cm.GetMask<T3>();
+        TypeMask |= cm.GetMask<T4>();
+    }
+
+    public override void ProcessEntity(float deltaTime, int entity)
+    {
+        ref var t1Ref = ref Storages.GetStorage<T1>().GetComponent<T1>(entity);
+        ref var t2Ref = ref Storages.GetStorage<T2>().GetComponent<T2>(entity);
+        ref var t3Ref = ref Storages.GetStorage<T3>().GetComponent<T3>(entity);
+        ref var t4Ref = ref Storages.GetStorage<T4>().GetComponent<T4>(entity);
+
+        ProcessEntity(ref t1Ref, ref t2Ref, ref t3Ref, ref t4Ref);
+    }
+
+    public abstract void ProcessEntity(ref T1 t1Rfef, ref T2 t2Ref, ref T3 t3Rfef, ref T4 t4Ref);
+}
+
+public static class Time
+{
+    public static float DeltaTime = 1f / 60f;
+}
+
+static class EcsState
+{
+    public static int[] Entities = new int[GLOBAL.ENTITIES_COUNT];
+    private static SystemProcessor _sp;
+
+    public static ComponentStorage<Position> PositionStorage;
+    public static ComponentStorage<Origin> OriginStorage;
+    public static ComponentStorage<Scale> ScaleStorage;
+    public static ComponentStorage<Rotation> RotationStorage;
+
+    public static void Process()
+    {
+        //_sp.Process(Time.DeltaTime);
+    }
+
+    public static void Init()
+    {
+        var cm = new ComponentManager();
+
+        _sp = new SystemProcessor(cm);
+        _sp.RegisterSystem(new MatrixSystem());
+
+        var em = new EntityManager(_sp, cm);
+
+
+        Vector3 pos = new Vector3();
+        const int DIST = 5;
+
+        for (int i = 0; i < Entities.Length; ++i)
+        {
+            if (pos.X > 100)
+            {
+                pos.X = 0;
+                pos.Z += DIST;
+            }
+
+            pos.X += DIST;
+
+            var entity = em.CreateEntity();
+            em.AddComponent<Position>(entity);
+            em.AddComponent<Origin>(entity);
+            em.AddComponent<Scale>(entity);
+            em.AddComponent<Rotation>(entity);
+
+            ref var position = ref Storages.GetStorage<Position>().GetComponent<Position>(entity);
+            ref var origin = ref Storages.GetStorage<Origin>().GetComponent<Origin>(entity);
+            ref var scale = ref Storages.GetStorage<Scale>().GetComponent<Scale>(entity);
+            ref var rotation = ref Storages.GetStorage<Rotation>().GetComponent<Rotation>(entity);
+
+            scale.Value.X = scale.Value.Y = scale.Value.Z = 1f;
+            position.Value.X = pos.X;
+            position.Value.Y = pos.Y;
+            position.Value.Z = pos.Z;
+
+            Entities[i] = entity;
+        }
+
+        PositionStorage = Storages.GetStorage<Position>();
+        OriginStorage = Storages.GetStorage<Origin>();
+        ScaleStorage = Storages.GetStorage<Scale>();
+        RotationStorage = Storages.GetStorage<Rotation>();
+    }
+}
+
+static class GLOBAL
+{
+    public const int ENTITIES_COUNT = 50000;
 }
