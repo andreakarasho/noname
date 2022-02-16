@@ -43,7 +43,7 @@ namespace Ecs
 
         public override void ProcessEntity(float deltaTime, int entity) 
         {
-            ref var t1Ref = ref Storages.GetStorage<T1>().GetComponent<T1>(entity);
+            ref var t1Ref = ref Storages<T1>.GetStorage().GetComponent(entity);
 
             ProcessEntity(ref t1Ref);
         }
@@ -61,8 +61,8 @@ namespace Ecs
 
         public override void ProcessEntity(float deltaTime, int entity)
         {
-            ref var t1Ref = ref Storages.GetStorage<T1>().GetComponent<T1>(entity);
-            ref var t2Ref = ref Storages.GetStorage<T2>().GetComponent<T2>(entity);
+            ref var t1Ref = ref Storages<T1>.GetStorage().GetComponent(entity);
+            ref var t2Ref = ref Storages<T2>.GetStorage().GetComponent(entity);
 
             ProcessEntity(ref t1Ref, ref t2Ref);
         }
@@ -99,7 +99,7 @@ namespace Ecs
 
         public void AddComponent<T>(int entity, T component) where T : unmanaged
         {
-            var storage = Storages.GetStorage<T>();
+            var storage = Storages<T>.GetStorage();
             var index = storage.Store(entity, component);
             OnComponentAdded(entity, _componentManager.GetMask<T>());
         }
@@ -133,38 +133,45 @@ namespace Ecs
         }
     }
 
-    public static class Storages
+    public static class Storages<T> where T : unmanaged
     {
-        private static readonly Dictionary<Type, IComponentStorage> _storages =
-            new Dictionary<Type, IComponentStorage>();
+        //private static readonly Dictionary<Type, IComponentStorage<T>> _storages =
+        //    new Dictionary<Type, IComponentStorage<T>>();
 
-        public static ComponentStorage<T> GetStorage<T>()
+        //public static ComponentStorage<T> GetStorage<T>()
+        //{
+        //    var t = typeof(T);
+        //    if (!_storages.TryGetValue(t, out var storage))
+        //    {
+        //        storage = new ComponentStorage<T>();
+        //        _storages.Add(t, storage);
+        //    }
+
+        //    return (ComponentStorage<T>)storage;
+        //}
+
+        private readonly static ComponentStorage<T> _componentStorage = new ComponentStorage<T>();
+
+        public static ComponentStorage<T> GetStorage()
         {
-            var t = typeof(T);
-            if (!_storages.TryGetValue(t, out var storage))
-            {
-                storage = new ComponentStorage<T>();
-                _storages.Add(t, storage);
-            }
-
-            return (ComponentStorage<T>)storage;
+            return _componentStorage;
         }
     }
 
-    public interface IComponentStorage
+    public interface IComponentStorage<T> where T : unmanaged
     {
-        int Store<T>(int entity, T component) where T : unmanaged; 
-        ref T GetComponent<T>(int entity) where T : unmanaged;
+        int Store(int entity, T component); 
+        ref T GetComponent(int entity);
         int GetStorageIndex(int entity);
     }
 
-    public class ComponentStorage<T> : IComponentStorage
+    public class ComponentStorage<T> : IComponentStorage<T> where T : unmanaged
     {
         private int[] _componentIndicesByEntity = new int[100];
         private int _nextID = 1;
         public T[] Components = new T[100];
 
-        public unsafe int Store<T2>(int entity, T2 component) where T2 : unmanaged
+        public unsafe int Store(int entity, T component)
         {
             var ret = _nextID;
             var ptr = Unsafe.AsPointer(ref component);
@@ -190,10 +197,10 @@ namespace Ecs
             return _componentIndicesByEntity[entity];
         }
 
-        public unsafe ref T1 GetComponent<T1>(int entity) where T1 : unmanaged
+        public unsafe ref T GetComponent(int entity) 
         {
-            ref var refVal = ref Components[GetStorageIndex(entity)];
-            return ref Unsafe.AsRef<T1>(Unsafe.AsPointer(ref refVal));
+           return ref Components[GetStorageIndex(entity)];
+            //return ref Unsafe.AsRef<T1>(Unsafe.AsPointer(ref refVal));
         }
     }
 

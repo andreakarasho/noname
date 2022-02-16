@@ -57,8 +57,8 @@ unsafe
         State.Pipeline = sg_make_pipeline(&pipelineDesc);
      
         State.Camera = new Camera();
-        State.Camera.Position = new Vector3(-6.0f, 4.0f, 6.0f);
-        State.Camera.Yaw = -MathF.PI / 4;
+        State.Camera.Position = new Vector3(-10.0f, 16.0f, -40.0f);
+        State.Camera.Yaw = -2.6f;
         State.Camera.Pitch = -MathF.PI / 9;
         State.Camera.WindowResized(Backend.Width, Backend.Height);
 
@@ -144,8 +144,8 @@ unsafe
 
             if (igButton("Reset camera", Vector2.Zero))
             {
-                State.Camera.Position = new Vector3(-6.0f, 4.0f, 6.0f);
-                State.Camera.Yaw = -MathF.PI / 4;
+                State.Camera.Position = new Vector3(-10.0f, 16.0f, -40.0f);
+                State.Camera.Yaw = -2.6f;
                 State.Camera.Pitch = -MathF.PI / 9;
             }
 
@@ -167,10 +167,10 @@ unsafe
                     {
                         ref var entity = ref EcsState.Entities[i];
 
-                        ref var position = ref EcsState.PositionStorage.GetComponent<Position>(entity);
-                        ref var origin = ref EcsState.OriginStorage.GetComponent<Origin>(entity);
-                        ref var scale = ref EcsState.ScaleStorage.GetComponent<Scale>(entity);
-                        ref var rotation = ref EcsState.RotationStorage.GetComponent<Rotation>(entity);
+                        ref var position = ref EcsState.PositionStorage.GetComponent(entity);
+                        ref var origin = ref EcsState.OriginStorage.GetComponent(entity);
+                        ref var scale = ref EcsState.ScaleStorage.GetComponent(entity);
+                        ref var rotation = ref EcsState.RotationStorage.GetComponent(entity);
 
                         igTextDisabled($"Entity - #{i}");
                         igDragFloat3("Position##pos_cube", (float*)position.Value.GetPointer(), 0.1f, 0, 0, "%.3f", 0);
@@ -336,10 +336,10 @@ unsafe
 
     static void RotateEntity(ref int entity, ref Matrix4x4 modelMatrix)
     {
-        ref var position = ref EcsState.PositionStorage.GetComponent<Position>(entity);
-        ref var origin = ref EcsState.OriginStorage.GetComponent<Origin>(entity);
-        ref var scale = ref EcsState.ScaleStorage.GetComponent<Scale>(entity);
-        ref var rotation = ref EcsState.RotationStorage.GetComponent<Rotation>(entity);
+        ref var position = ref EcsState.PositionStorage.GetComponent(entity);
+        ref var origin = ref EcsState.OriginStorage.GetComponent(entity);
+        ref var scale = ref EcsState.ScaleStorage.GetComponent(entity);
+        ref var rotation = ref EcsState.RotationStorage.GetComponent(entity);
 
 
         bool autoRotate = State.AutoRotate;
@@ -769,10 +769,10 @@ public abstract class GameSystem<T1, T2, T3, T4> : GameSystem
 
     public override void ProcessEntity(float deltaTime, int entity)
     {
-        ref var t1Ref = ref Storages.GetStorage<T1>().GetComponent<T1>(entity);
-        ref var t2Ref = ref Storages.GetStorage<T2>().GetComponent<T2>(entity);
-        ref var t3Ref = ref Storages.GetStorage<T3>().GetComponent<T3>(entity);
-        ref var t4Ref = ref Storages.GetStorage<T4>().GetComponent<T4>(entity);
+        ref var t1Ref = ref Storages<T1>.GetStorage().GetComponent(entity);
+        ref var t2Ref = ref Storages<T2>.GetStorage().GetComponent(entity);
+        ref var t3Ref = ref Storages<T3>.GetStorage().GetComponent(entity);
+        ref var t4Ref = ref Storages<T4>.GetStorage().GetComponent(entity);
 
         ProcessEntity(ref t1Ref, ref t2Ref, ref t3Ref, ref t4Ref);
     }
@@ -809,10 +809,10 @@ static class EcsState
 
         var em = new EntityManager(_sp, cm);
 
-        PositionStorage = Storages.GetStorage<Position>();
-        OriginStorage = Storages.GetStorage<Origin>();
-        ScaleStorage = Storages.GetStorage<Scale>();
-        RotationStorage = Storages.GetStorage<Rotation>();
+        PositionStorage = Storages<Position>.GetStorage();
+        OriginStorage = Storages<Origin>.GetStorage();
+        ScaleStorage = Storages<Scale>.GetStorage();
+        RotationStorage = Storages<Rotation>.GetStorage();
 
         Vector3 pos = new Vector3();
         const int DIST = 5;
