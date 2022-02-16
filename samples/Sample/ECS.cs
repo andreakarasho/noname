@@ -43,7 +43,7 @@ namespace Ecs
 
         public override void ProcessEntity(float deltaTime, int entity) 
         {
-            ref var t1Ref = ref Storages<T1>.GetStorage().GetComponent(entity);
+            ref var t1Ref = ref Storages<T1>.Storage.GetComponent(entity);
 
             ProcessEntity(ref t1Ref);
         }
@@ -61,8 +61,8 @@ namespace Ecs
 
         public override void ProcessEntity(float deltaTime, int entity)
         {
-            ref var t1Ref = ref Storages<T1>.GetStorage().GetComponent(entity);
-            ref var t2Ref = ref Storages<T2>.GetStorage().GetComponent(entity);
+            ref var t1Ref = ref Storages<T1>.Storage.GetComponent(entity);
+            ref var t2Ref = ref Storages<T2>.Storage.GetComponent(entity);
 
             ProcessEntity(ref t1Ref, ref t2Ref);
         }
@@ -99,7 +99,7 @@ namespace Ecs
 
         public void AddComponent<T>(int entity, T component) where T : unmanaged
         {
-            var storage = Storages<T>.GetStorage();
+            var storage = Storages<T>.Storage;
             var index = storage.Store(entity, component);
             OnComponentAdded(entity, _componentManager.GetMask<T>());
         }
@@ -135,27 +135,7 @@ namespace Ecs
 
     public static class Storages<T> where T : unmanaged
     {
-        //private static readonly Dictionary<Type, IComponentStorage<T>> _storages =
-        //    new Dictionary<Type, IComponentStorage<T>>();
-
-        //public static ComponentStorage<T> GetStorage<T>()
-        //{
-        //    var t = typeof(T);
-        //    if (!_storages.TryGetValue(t, out var storage))
-        //    {
-        //        storage = new ComponentStorage<T>();
-        //        _storages.Add(t, storage);
-        //    }
-
-        //    return (ComponentStorage<T>)storage;
-        //}
-
-        private readonly static ComponentStorage<T> _componentStorage = new ComponentStorage<T>();
-
-        public static ComponentStorage<T> GetStorage()
-        {
-            return _componentStorage;
-        }
+        public static ComponentStorage<T> Storage { get; } = new ComponentStorage<T>();
     }
 
     public interface IComponentStorage<T> where T : unmanaged
@@ -174,7 +154,6 @@ namespace Ecs
         public unsafe int Store(int entity, T component)
         {
             var ret = _nextID;
-            var ptr = Unsafe.AsPointer(ref component);
 
             if (Components.Length <= ret)
             {
@@ -186,7 +165,7 @@ namespace Ecs
                 Array.Resize(ref _componentIndicesByEntity, _componentIndicesByEntity.Length * 2);
             }
 
-            Components[ret] = Unsafe.AsRef<T>(ptr);
+            Components[ret] = component;
             _componentIndicesByEntity[entity] = ret;
             _nextID += 1;
             return ret;
@@ -200,7 +179,6 @@ namespace Ecs
         public unsafe ref T GetComponent(int entity) 
         {
            return ref Components[GetStorageIndex(entity)];
-            //return ref Unsafe.AsRef<T1>(Unsafe.AsPointer(ref refVal));
         }
     }
 

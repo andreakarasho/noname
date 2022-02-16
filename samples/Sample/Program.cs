@@ -769,10 +769,10 @@ public abstract class GameSystem<T1, T2, T3, T4> : GameSystem
 
     public override void ProcessEntity(float deltaTime, int entity)
     {
-        ref var t1Ref = ref Storages<T1>.GetStorage().GetComponent(entity);
-        ref var t2Ref = ref Storages<T2>.GetStorage().GetComponent(entity);
-        ref var t3Ref = ref Storages<T3>.GetStorage().GetComponent(entity);
-        ref var t4Ref = ref Storages<T4>.GetStorage().GetComponent(entity);
+        ref var t1Ref = ref Storages<T1>.Storage.GetComponent(entity);
+        ref var t2Ref = ref Storages<T2>.Storage.GetComponent(entity);
+        ref var t3Ref = ref Storages<T3>.Storage.GetComponent(entity);
+        ref var t4Ref = ref Storages<T4>.Storage.GetComponent(entity);
 
         ProcessEntity(ref t1Ref, ref t2Ref, ref t3Ref, ref t4Ref);
     }
@@ -809,10 +809,10 @@ static class EcsState
 
         var em = new EntityManager(_sp, cm);
 
-        PositionStorage = Storages<Position>.GetStorage();
-        OriginStorage = Storages<Origin>.GetStorage();
-        ScaleStorage = Storages<Scale>.GetStorage();
-        RotationStorage = Storages<Rotation>.GetStorage();
+        PositionStorage = Storages<Position>.Storage;
+        OriginStorage = Storages<Origin>.Storage;
+        ScaleStorage = Storages<Scale>.Storage;
+        RotationStorage = Storages<Rotation>.Storage;
 
         Vector3 pos = new Vector3();
         const int DIST = 5;
