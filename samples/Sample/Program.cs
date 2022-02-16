@@ -809,6 +809,10 @@ static class EcsState
 
         var em = new EntityManager(_sp, cm);
 
+        PositionStorage = Storages.GetStorage<Position>();
+        OriginStorage = Storages.GetStorage<Origin>();
+        ScaleStorage = Storages.GetStorage<Scale>();
+        RotationStorage = Storages.GetStorage<Rotation>();
 
         Vector3 pos = new Vector3();
         const int DIST = 5;
@@ -824,28 +828,13 @@ static class EcsState
             pos.X += DIST;
 
             var entity = em.CreateEntity();
-            em.AddComponent<Position>(entity);
+            em.AddComponent<Position>(entity, new Position() { Value = pos });
+            em.AddComponent<Scale>(entity, new Scale() { Value = new Vector3(1f, 1f, 1f) });
             em.AddComponent<Origin>(entity);
-            em.AddComponent<Scale>(entity);
             em.AddComponent<Rotation>(entity);
 
-            ref var position = ref Storages.GetStorage<Position>().GetComponent<Position>(entity);
-            ref var origin = ref Storages.GetStorage<Origin>().GetComponent<Origin>(entity);
-            ref var scale = ref Storages.GetStorage<Scale>().GetComponent<Scale>(entity);
-            ref var rotation = ref Storages.GetStorage<Rotation>().GetComponent<Rotation>(entity);
-
-            scale.Value.X = scale.Value.Y = scale.Value.Z = 1f;
-            position.Value.X = pos.X;
-            position.Value.Y = pos.Y;
-            position.Value.Z = pos.Z;
-
             Entities[i] = entity;
-        }
-
-        PositionStorage = Storages.GetStorage<Position>();
-        OriginStorage = Storages.GetStorage<Origin>();
-        ScaleStorage = Storages.GetStorage<Scale>();
-        RotationStorage = Storages.GetStorage<Rotation>();
+        }  
     }
 }
 
